@@ -182,10 +182,8 @@ static inline void finish_sync() {
                 std::max(std::abs(d_top_real[first_idx]), std::abs(d_top_imag[first_idx])),
                 std::max(std::abs(d_top_real[second_idx]), std::abs(d_top_imag[second_idx])));
             int phase_shift = 0;
-            while (max_component > 16383) {
-                max_component >>= 1;
-                phase_shift++;
-            }
+            if (max_component > 16383)
+                phase_shift = 18 - __builtin_clz(static_cast<uint32_t>(max_component));
             const int32_t first_real = d_top_real[first_idx] >> phase_shift;
             const int32_t first_imag = d_top_imag[first_idx] >> phase_shift;
             const int32_t second_real = d_top_real[second_idx] >> phase_shift;

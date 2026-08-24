@@ -66,7 +66,10 @@ static inline int32_t phase_of_sum(int64_t real, int64_t imag) {
     const uint64_t abs_imag = imag < 0 ? 0ULL - (uint64_t)imag : (uint64_t)imag;
     uint64_t magnitude = abs_real | abs_imag;
     int shift = 0;
-    while (magnitude > 0x7ffffffeULL) { magnitude >>= 1; ++shift; }
+    if (magnitude > 0x7ffffffeULL) {
+        shift = 33 - __builtin_clzll(magnitude);
+        if ((magnitude >> shift) > 0x7ffffffeULL) ++shift;
+    }
     return atan2_estimate_lut_q29(
         (int32_t)(imag >> shift), (int32_t)(real >> shift));
 }
