@@ -23,7 +23,7 @@ CHESSCC1_FLAGS = -f -p me -P ${AIE_INCLUDE_DIR} -I ${AIETOOLS_DIR}/include
 CHESSCC2_FLAGS = -f -p me -P ${AIE2_INCLUDE_DIR} -I ${AIETOOLS_DIR}/include
 CHESS_FLAGS = -P ${AIE_INCLUDE_DIR}
 CHESSCCWRAP1_FLAGS = aie -I ${AIETOOLS_DIR}/include
-CHESSCCWRAP2_FLAGS = aie2 -I ${AIETOOLS_DIR}/include
+CHESSCCWRAP2_FLAGS = aie2 -I ${AIETOOLS_DIR}/include -I ${srcdir}
 CHESSCCWRAP2P_FLAGS = aie2p -I ${AIETOOLS_DIR}/include
 PEANOWRAP2_FLAGS = -O2 -std=c++20 --target=aie2-none-unknown-elf ${WARNING_FLAGS} -DNDEBUG -I ${MLIR_AIE_DIR}/include
 PEANOWRAP2P_FLAGS = -O2 -std=c++20 --target=aie2p-none-unknown-elf ${WARNING_FLAGS} -DNDEBUG -I ${MLIR_AIE_DIR}/include
@@ -90,7 +90,7 @@ build/frame_equalizer_preprocess.o: ${srcdir}/frame_equalizer_preprocess.cc ${sr
 	mkdir -p ${@D}
 	cd ${@D} && xchesscc_wrapper ${CHESSCCWRAP2_FLAGS} -c $< -o ${@F}
 
-build/frame_equalizer_equalize.o: ${srcdir}/frame_equalizer_equalize.cc ${srcdir}/frame_equalizer_metadata.h ${srcdir}/aie_kernel_utils.h
+build/frame_equalizer_equalize.o: ${srcdir}/frame_equalizer_equalize.cc ${srcdir}/frame_equalizer_algorithm.h ${srcdir}/frame_equalizer_metadata.h ${srcdir}/aie_kernel_utils.h ${srcdir}/equalizer/select.h ${srcdir}/equalizer/common.h ${srcdir}/equalizer/constellation.h ${srcdir}/equalizer/ls.h ${srcdir}/equalizer/lms.h ${srcdir}/equalizer/comb.h ${srcdir}/equalizer/sta.h
 	mkdir -p ${@D}
 	cd ${@D} && xchesscc_wrapper ${CHESSCCWRAP2_FLAGS} -c $< -o ${@F}
 	

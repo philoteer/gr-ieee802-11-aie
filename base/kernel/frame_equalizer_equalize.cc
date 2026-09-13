@@ -6,8 +6,7 @@
 
 #include "aie_kernel_utils.h"
 #include "frame_equalizer_metadata.h"
-
-#define FFT_SIZE 64
+#include "equalizer/select.h"
 
 // Test builds can replace the CSI metadata with one LS-equalized vector for
 // every payload symbol. Production builds retain one CSI vector per frame.
@@ -16,26 +15,9 @@
 #endif
 
 namespace {
-#define NOINLINE __attribute__((noinline))
+// The selected equalizer implementation is provided by equalizer/select.h,
+// which defines update_channel_estimate() and reset_channel_estimate().
 
-// All bin-indexed tables use FFT-shifted order: DC is bin 32, negative
-// subcarriers are on its left, and positive subcarriers are on its right.
-// kLong is the known BPSK long-training sequence used to remove the transmitted
-// sign when estimating the channel from the two repeated LTS symbols.
-alignas(aie::vector_decl_align) const int16_t kLong[FFT_SIZE] = {
-    0, 0, 0, 0, 0, 0, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1,
-    1, 1, 1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, 1, 1, 1,
-    0, 1, -1, -1, 1, 1, -1, 1, -1, 1, -1, -1, -1, -1, -1, 1,
-    1, -1, -1, 1, -1, 1, -1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
-};
-// The 52 occupied bins comprise 48 data carriers and four pilots. Guards and
-// DC are zero, allowing channel/SNR loops to skip them cheaply.
-alignas(aie::vector_decl_align) const int8_t kOccupied[FFT_SIZE] = {
-    0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
-};
 // Vectorized Viterbi transition tables. Entry s is the parity of
 // ((s << 1) & polynomial), with the hypothesis bit omitted. The two tables
 // correspond to generator polynomials 0155 (A) and 0117 (B); the hypothesis
@@ -60,7 +42,9 @@ alignas(aie::vector_decl_align) static constexpr uint8_t kViterbiStates[32] = {
 // Persistent kernel state. Calls may contain only part of a frame, so channel
 // estimates, tracking loops, and frame counters must survive between calls.
 alignas(aie::vector_decl_align) static cint32 d_channel[64];
-alignas(aie::vector_decl_align) static cint32 d_first_long[64];
+// comb.h reads and writes the channel estimate with aligned 8-lane vectors.
+static_assert(__alignof__(d_channel) >= aie::vector_ldst_align_v<cint32, 8>,
+              "d_channel must support aligned 8-lane vector loads");
 alignas(aie::vector_decl_align) static cint32 d_equalized[64];
 alignas(aie::vector_decl_align) static int32_t d_channel_power[64];
 // The first 48 bytes are one decision per data carrier. The extra tail keeps
@@ -88,7 +72,6 @@ static uint64_t d_snr_linear;
 static int32_t d_center_frequency_mhz;
 static int32_t d_signal_beta_q29;
 static bool d_pending_tag;
-
 
 // Hard-Viterbi L-SIG decoder (BPSK 1/2 rate).
 static inline void decode_signal(const int8_t hard[48], int8_t decoded[24]) {
@@ -354,7 +337,7 @@ static inline int32_t normalized_component_q15(int32_t numerator,
 
 static inline void copy_equalized(frame_equalizer_csi symbols[FRAME_EQUALIZER_CSI_SIZE]) {
     // d_equalized and d_channel_power contain the matched-filter numerator and
-    // |H|^2 with the same shift. Divide them here to reproduce GNU Radio LS's
+    // |H|^2 with the same shift. Divide them here to reproduce GNU Radio's
     // sample/H output in signed Q16.15. This division is test-output-only; the
     // production hard demapper remains in the faster numerator/power domain.
     int output = 0;
@@ -391,6 +374,7 @@ static NOINLINE void reset_equalization(int32_t cfo_q29) {
     d_equalizer_current_symbol = 0; d_frame_symbols = 0; d_frame_bytes = 0;
     d_encoding = 0; d_modulation = 2; d_equalizer_cfo_q29 = cfo_q29;
     d_pending_tag = false;
+    reset_channel_estimate(d_snr_linear);
 }
 } // namespace
 
@@ -426,40 +410,19 @@ extern "C" void frame_equalizer_equalize(
         // while d_equalizer_current_symbol remains frame-relative state.
         const int32_t beta = prepared_metadata->beta[offset / 64];
 
-        if (d_equalizer_current_symbol == 0) {
-            // Preserve LTS1 so LTS2 can form sum (signal) and difference (noise).
-            for (int bin = 0; bin < 64; bin += 16)
-                aie::store_v(d_first_long + bin, aie::load_v<16>(prepared_symbol + bin));
-        } else if (d_equalizer_current_symbol == 1) {
-            uint64_t signal_power = 0, noise_power = 0;
-            aie::scoped_mode rnd_mode{aie::rounding_mode::symmetric_floor};
-            for (int bin = 0; bin < 64; bin += 8) {
-                const auto first_v = aie::load_v<8>(d_first_long + bin);
-                const auto symbol_v = aie::load_v<8>(prepared_symbol + bin);
-                const auto signal_v = aie::add(first_v, symbol_v);
-                const auto noise_v = aie::sub(first_v, symbol_v);
-                const auto long_v = aie::load_v<8>(kLong + bin);
-
-                // Average the repeated LTS and remove its known +/-1 sign.
-                aie::store_v(
-                    d_channel + bin,
-                    aie::mul<cacc64>(signal_v, long_v)
-                        .to_vector<cint32>(1));
-
-                // Power remains scalar so its 64-bit accumulation is exact.
-                for (int lane = 0; lane < 8; ++lane) {
-                    if (!kOccupied[bin + lane]) continue;
-                    const cint32 signal = signal_v[lane];
-                    const cint32 noise = noise_v[lane];
-                    signal_power += (int64_t)signal.real * signal.real +
-                                    (int64_t)signal.imag * signal.imag;
-                    noise_power += (int64_t)noise.real * noise.real +
-                                   (int64_t)noise.imag * noise.imag;
-                }
-            }
-            // Store the linear SNR in Q4.4 so sub-0 dB values survive the ABI.
-            d_snr_linear = (signal_power << 4) / (noise_power + 1);
-        } else {
+#if !FRAME_EQUALIZER_OUTPUT_SYMBOLS
+        // GNU Radio publishes frame CSI immediately after SIGNAL equalization.
+        // Emit the delayed stream tag before the estimator incorporates the
+        // first payload symbol, avoiding a separate 64-bin channel snapshot.
+        if (d_equalizer_current_symbol > 2 && d_pending_tag &&
+            metadata->tag_count < FRAME_EQUALIZER_MAX_TAGS) {
+            fill_tag(metadata->tags[metadata->tag_count++], produced);
+            d_pending_tag = false;
+        }
+#endif
+        update_channel_estimate(prepared_symbol, d_equalizer_current_symbol,
+                                d_channel, d_snr_linear);
+        if (d_equalizer_current_symbol >= 2) {
             // SIGNAL is always BPSK. Later symbols use the modulation selected
             // by SIGNAL; pilots, guards, and DC never enter d_decisions.
             {
@@ -489,6 +452,11 @@ extern "C" void frame_equalizer_equalize(
             }
             int _modulation = d_equalizer_current_symbol == 2 ? 2 : d_modulation;
             hard_decision(d_equalized, d_channel_power, d_decisions, _modulation);
+            // Decision-directed estimators update the channel after demapping,
+            // so this symbol was equalized with the previous estimate. LS and
+            // comb use a no-op here.
+            track_channel_estimate(prepared_symbol, d_decisions, _modulation,
+                                   d_equalizer_current_symbol, d_channel);
             if (d_equalizer_current_symbol == 2) {
                 d_signal_beta_q29 = beta;
                 decode_signal(d_decisions, d_decoded);
@@ -500,10 +468,6 @@ extern "C" void frame_equalizer_equalize(
                 if (metadata->tag_count < FRAME_EQUALIZER_MAX_TAGS) {
                     fill_tag(metadata->tags[metadata->tag_count++], produced);
                     d_pending_tag = false;
-                }
-#else
-                if (d_pending_tag && metadata->tag_count < FRAME_EQUALIZER_MAX_TAGS) {
-                    fill_tag(metadata->tags[metadata->tag_count++], produced); d_pending_tag = false;
                 }
 #endif
                 // produced advances by 48 bytes and the runtime buffer chunks

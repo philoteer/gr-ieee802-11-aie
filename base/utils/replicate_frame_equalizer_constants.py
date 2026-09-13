@@ -43,6 +43,28 @@ def parse_int_array(text: str, name: str) -> list[int]:
     return [int(token, 0) for token in tokens]
 
 
+def parse_int_arrays(text: str, name: str) -> list[list[int]]:
+    """Parse every definition of an array, not just the first one.
+
+    Shared tables can legitimately appear in more than one translation unit
+    (for example kPolarity in preprocess and in the equalizer headers), so the
+    verifier must not stop at the first match.
+    """
+    pattern = re.compile(
+        rf"\b{re.escape(name)}\s*(?:\[[^\]]*\])?\s*=\s*\{{(?P<body>.*?)\}}\s*;",
+        re.DOTALL,
+    )
+    return [
+        [
+            int(token, 0)
+            for token in re.findall(
+                r"(?<![A-Za-z_])-?(?:0[xX][0-9A-Fa-f]+|\d+)", match.group("body")
+            )
+        ]
+        for match in pattern.finditer(text)
+    ]
+
+
 def parse_copy_array(text: str, name: str) -> list[tuple[int, int, int]]:
     body = extract_initializer(text, name)
     return [
@@ -71,6 +93,54 @@ def expected_data_bins() -> list[int]:
         bin_index
         for bin_index in range(FFT_SIZE)
         if 6 <= bin_index <= 58 and bin_index != 32 and bin_index not in pilots
+    ]
+
+
+def expected_comb_interpolation_weights() -> list[int]:
+    weights = []
+    for bin_index in range(FFT_SIZE):
+        if bin_index <= 11:
+            position, span = bin_index, 11
+        elif bin_index <= 25:
+            position, span = bin_index - 11, 14
+        elif bin_index <= 39:
+            position, span = bin_index - 25, 14
+        elif bin_index <= 53:
+            position, span = bin_index - 39, 14
+        else:
+            position, span = bin_index - 53, 11
+        weights.append(round_half_up(position * Q15 / span))
+    return weights
+
+
+def constellation_points(modulation: int) -> list[complex]:
+    """Constellation point per decision code, matching the kernel demapper."""
+    if modulation == 2:
+        return [-1, 1]
+    if modulation == 4:
+        q = 1 / math.sqrt(2)
+        return [-q - 1j * q, q - 1j * q, -q + 1j * q, q + 1j * q]
+    if modulation == 16:
+        levels = [-3, 3, -1, 1]
+        norm = math.sqrt(10)
+    else:
+        levels = [-7, 7, -1, 1, -5, 5, -3, 3]
+        norm = math.sqrt(42)
+    return [(x + 1j * y) / norm for y in levels for x in levels]
+
+
+def expected_inverse_points(modulation: int) -> list[int]:
+    values: list[int] = []
+    for point in constellation_points(modulation):
+        inverse = 1 / point
+        values.append(round_half_up(inverse.real * (1 << 24)))
+        values.append(round_half_up(inverse.imag * (1 << 24)))
+    return values
+
+
+def expected_sta_reciprocals() -> list[int]:
+    return [0] + [
+        round_half_up((1 << 24) / window) for window in range(1, 6)
     ]
 
 
@@ -117,26 +187,35 @@ def check_array(
     expected: list[int],
     failures: list[str],
 ) -> None:
-    actual = parse_int_array(source_text, name)
-    if actual == expected:
-        print(f"PASS {name}: {len(expected)} values")
+    occurrences = parse_int_arrays(source_text, name)
+    if not occurrences:
+        message = f"FAIL {name}: definition not found"
+        print(message)
+        failures.append(message)
         return
-    first_difference = next(
-        (
-            index
-            for index, (actual_value, expected_value) in enumerate(zip(actual, expected))
-            if actual_value != expected_value
-        ),
-        min(len(actual), len(expected)),
-    )
-    actual_value = actual[first_difference] if first_difference < len(actual) else "missing"
-    expected_value = expected[first_difference] if first_difference < len(expected) else "missing"
-    message = (
-        f"FAIL {name}: index {first_difference}, got {actual_value}, "
-        f"expected {expected_value}; lengths {len(actual)} != {len(expected)}"
-    )
-    print(message)
-    failures.append(message)
+    failures_before = len(failures)
+    for occurrence, actual in enumerate(occurrences, start=1):
+        if actual == expected:
+            continue
+        first_difference = next(
+            (
+                index
+                for index, (actual_value, expected_value) in enumerate(zip(actual, expected))
+                if actual_value != expected_value
+            ),
+            min(len(actual), len(expected)),
+        )
+        actual_value = actual[first_difference] if first_difference < len(actual) else "missing"
+        expected_value = expected[first_difference] if first_difference < len(expected) else "missing"
+        message = (
+            f"FAIL {name} (definition {occurrence} of {len(occurrences)}): "
+            f"index {first_difference}, got {actual_value}, expected "
+            f"{expected_value}; lengths {len(actual)} != {len(expected)}"
+        )
+        print(message)
+        failures.append(message)
+    if len(failures) == failures_before:
+        print(f"PASS {name}: {len(expected)} values in {len(occurrences)} definition(s)")
 
 
 def check_copies(
@@ -270,6 +349,12 @@ def main() -> int:
     sources = args.source or [
         root / "kernel/frame_equalizer_preprocess.cc",
         root / "kernel/frame_equalizer_equalize.cc",
+        root / "kernel/equalizer/common.h",
+        root / "kernel/equalizer/constellation.h",
+        root / "kernel/equalizer/ls.h",
+        root / "kernel/equalizer/lms.h",
+        root / "kernel/equalizer/comb.h",
+        root / "kernel/equalizer/sta.h",
     ]
     source_text = "\n".join(source.read_text() for source in sources)
     reference_text = args.reference.read_text()
@@ -279,6 +364,12 @@ def main() -> int:
         ("kLong", parse_int_array(reference_text, "LONG")),
         ("kPolarity", parse_int_array(reference_text, "POLARITY")),
         ("kOccupied", expected_occupied()),
+        ("kCombInterpolationWeightQ15", expected_comb_interpolation_weights()),
+        ("kInversePointsBpsk", expected_inverse_points(2)),
+        ("kInversePointsQpsk", expected_inverse_points(4)),
+        ("kInversePoints16Qam", expected_inverse_points(16)),
+        ("kInversePoints64Qam", expected_inverse_points(64)),
+        ("kStaReciprocalQ24", expected_sta_reciprocals()),
         ("kPhaseLaneIndices", list(range(16))),
         ("kViterbiParityA", expected_viterbi_parity(0o155)),
         ("kViterbiParityB", expected_viterbi_parity(0o117)),

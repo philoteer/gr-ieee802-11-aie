@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare GNU Radio and NPU LS symbols on a finite recorded FFT prefix.
+"""Compare GNU Radio and NPU equalized symbols on a recorded FFT prefix.
 
 IMPORTANT BUILD MODE: like test_symbols.py, this compares the NPU's normalized
 equalized symbols against GNU Radio, so it requires the NPU built with
@@ -7,7 +7,7 @@ equalized symbols against GNU Radio, so it requires the NPU built with
 emits the channel estimate instead and would compare the wrong data. The
 shared ``test_symbols.require_symbols_mode()`` guard refuses a mismatched build
 by checking ``build/frame_equalizer_build_mode.txt``. Rebuild with
-``make DFRAME_EQUALIZER_OUTPUT_SYMBOLS=1`` (or ``make compare``) first.
+``make compare EQUALIZER_ALGORITHM=LS`` (or ``LMS``/``COMB``/``STA``) first.
 """
 
 import argparse
@@ -67,14 +67,15 @@ def run_npu_recording(handle, samples, tags):
 
 
 def main():
-    test.require_symbols_mode()
     parser = argparse.ArgumentParser(description=__doc__)
+    test.add_algorithm_argument(parser)
     parser.add_argument("--input", type=Path,
         default=Path("/home/piloteer/바탕화면/fft_full.iqdata"))
     parser.add_argument("--header", type=Path,
         default=Path("/home/piloteer/바탕화면/fft_full.iqdata.hdr"))
     parser.add_argument("--samples", type=int, default=2097152)
     args = parser.parse_args()
+    test.require_symbols_mode(args.algorithm)
     samples, tags = read_reference(args.input, args.header, args.samples)
     handle, rtp_dir = test.load_kernel()
     matched_actual = []
@@ -92,7 +93,8 @@ def main():
         # test.pack uses the integer FFT/Q15 domain; gnuradio_reference divides
         # that domain by Q15 and therefore receives the original complex64 data.
         candidate = samples[start:start + 4 * 64].astype(np.complex128) * test.Q15
-        reference_hard, reference_symbols = test.gnuradio_reference(candidate, cfo)
+        reference_hard, reference_symbols = test.gnuradio_reference(
+            candidate, cfo, algorithm=args.algorithm)
         if len(reference_symbols) and np.max(np.abs(reference_symbols[0])) > 3.0:
             unusable += 1
             continue

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare NPU LS symbol metadata with GNU Radio's symbols PDUs.
+"""Compare NPU equalized-symbol metadata with GNU Radio's symbols PDUs.
 
 IMPORTANT BUILD MODE: this test compares the NPU's *normalized equalized
 symbols* against GNU Radio. The NPU kernel only emits those symbols when built
@@ -8,10 +8,11 @@ production build (CSI mode, flag 0) instead emits the channel estimate per
 frame, which is a different quantity; comparing it here yields a meaningless
 multi-hundred-percent EVM. ``require_symbols_mode()`` refuses a mismatched build
 by reading ``build/frame_equalizer_build_mode.txt``, which the Makefile writes
-during the build. Rebuild with ``make DFRAME_EQUALIZER_OUTPUT_SYMBOLS=1`` (or
-just ``make test``) before running.
+during the build. Use ``make test EQUALIZER_ALGORITHM=LS`` (or ``LMS``/``COMB``/
+``STA``) to build and test one statically selected kernel algorithm.
 """
 
+import argparse
 import numpy as np
 import pmt
 import os
@@ -45,6 +46,7 @@ POLARITY = [
     -1,1,-1,-1,-1,1,1,1,-1,-1,-1,-1,-1,-1,-1]
 PILOTS = (11, 25, 39, 53)
 DATA = [i for i in range(6, 59) if i != 32 and i not in PILOTS]
+ALGORITHMS = {"ls": 0, "lms": 1, "comb": 2, "sta": 3}
 
 CSI = np.dtype([("real", np.int32), ("imag", np.int32)], align=True)
 TAG = np.dtype([
@@ -105,7 +107,21 @@ def frame(rate, modulation, channel, length, decisions):
                      symbol(signal(rate, length), 2, channel, 2), *payload))
 
 
-def gnuradio_reference(samples, cfo=0):
+def algorithm_name(value):
+    name = value.lower()
+    if name not in ALGORITHMS:
+        raise argparse.ArgumentTypeError(
+            f"unknown equalizer {value!r}; choose from {', '.join(ALGORITHMS)}")
+    return name
+
+
+def add_algorithm_argument(parser):
+    parser.add_argument(
+        "--algorithm", type=algorithm_name, default="ls",
+        help="equalizer algorithm compiled into the NPU image (default: ls)")
+
+
+def gnuradio_reference(samples, cfo=0, algorithm="ls"):
     tag = gr.tag_t()
     tag.offset, tag.key = 0, pmt.intern("wifi_start")
     tag.value, tag.srcid = pmt.from_double(cfo / (1 << 29)), pmt.PMT_NIL
@@ -113,7 +129,8 @@ def gnuradio_reference(samples, cfo=0):
     source = blocks.vector_source_c(
         (samples.astype(np.complex64) / Q15).reshape(-1).tolist(), False, 64, [tag])
     equalizer = ieee802_11.frame_equalizer(
-        ieee802_11.Equalizer(0), 2.417e9, 20e6, False, False)
+        ieee802_11.Equalizer(ALGORITHMS[algorithm]),
+        2.417e9, 20e6, False, False)
     hard = blocks.vector_sink_b(48)
     messages = blocks.message_debug()
     fg.connect(source, equalizer, hard)
@@ -168,8 +185,8 @@ def check_error(label, actual, reference, limit):
     assert evm < limit, (label, evm)
 
 
-def require_symbols_mode():
-    """Refuse to run unless the NPU build emits normalized equalized symbols.
+def require_symbols_mode(algorithm="ls"):
+    """Require normalized-symbol output and the requested static equalizer.
 
     The symbol-comparison tests below only make sense with
     ``DFRAME_EQUALIZER_OUTPUT_SYMBOLS=1``. The build writes the active flags to
@@ -195,6 +212,12 @@ def require_symbols_mode():
             "compares normalized equalized symbols, which only the symbols "
             "build (DFRAME_EQUALIZER_OUTPUT_SYMBOLS=1) emits. Rebuild with "
             "`make DFRAME_EQUALIZER_OUTPUT_SYMBOLS=1`.")
+    built_algorithm = mode.get("EQUALIZER_ALGORITHM", "").lower()
+    if built_algorithm != algorithm:
+        raise SystemExit(
+            f"NPU was built for equalizer {built_algorithm or 'unknown'}, but "
+            f"the test requested {algorithm}. Rebuild with "
+            f"`make test EQUALIZER_ALGORITHM={algorithm.upper()}`.")
 
 
 def load_kernel():
@@ -213,7 +236,11 @@ def load_kernel():
 
 
 def main():
-    require_symbols_mode()
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_algorithm_argument(parser)
+    args = parser.parse_args()
+    algorithm = args.algorithm
+    require_symbols_mode(algorithm)
     assert TAG.itemsize == 560 and TILE_META.itemsize == 8968
     handle, rtp_dir = load_kernel()
     rng = np.random.default_rng(80211)
@@ -226,7 +253,7 @@ def main():
         value = frame(rate, modulation, channel, 0,
                       rng.integers(0, modulation, (1,48), dtype=np.uint8))
         frames.append(value)
-        refs.append(gnuradio_reference(value))
+        refs.append(gnuradio_reference(value, algorithm=algorithm))
     hard, symbols, encodings = run_npu(handle, *pack(frames, starts))
     assert encodings == list(range(8))
     np.testing.assert_array_equal(hard, np.concatenate([x[0] for x in refs]))
@@ -245,7 +272,8 @@ def main():
         ramp = (cfo / (1 << 29)) * 20 / 2417 * number * 80 * bins / 64
         value[number] *= np.exp(1j*(0.08 + 0.012*number - ramp))
     hard, symbols, _ = run_npu(handle, *pack([value], [0], cfo))
-    ref_hard, ref_symbols = gnuradio_reference(value, cfo)
+    ref_hard, ref_symbols = gnuradio_reference(
+        value, cfo, algorithm=algorithm)
     np.testing.assert_array_equal(hard, ref_hard)
     check_error("frequency-selective tracked frame", symbols, ref_symbols, 2e-3)
 
@@ -262,7 +290,7 @@ def main():
     hard, symbols, encodings = run_npu(handle, *pack([value], [0]))
     np.testing.assert_array_equal(hard[0], payload[0])
     assert encodings[0] == 0
-    print("frame_equalizer symbol comparison passed")
+    print(f"frame_equalizer {algorithm} symbol comparison passed")
 
 
 if __name__ == "__main__":
