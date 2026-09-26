@@ -42,6 +42,8 @@ list(APPEND ieee802_11_sources
     viterbi_decoder/base.cc
     append_crc32_impl.cc
     decode_mac_BER_impl.cc
+    frame_equalizer_debug_impl.cc
+    decode_mac_EVM_impl.cc
 )
 
 # use SSE2 optimized viterbi implementation if SSE2 is enabled

@@ -43,7 +43,8 @@ list(APPEND ieee802_11_python_files
     sync_short_python.cc
     append_crc32_python.cc
     decode_mac_BER_python.cc
-    python_bindings.cc)
+    frame_equalizer_debug_python.cc
+    decode_mac_EVM_python.cc python_bindings.cc)
 
 GR_PYBIND_MAKE_OOT(ieee802_11 
    ../..

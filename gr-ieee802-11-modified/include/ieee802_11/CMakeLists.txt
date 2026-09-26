@@ -24,5 +24,7 @@ install(FILES
     sync_long.h
     sync_short.h
     append_crc32.h
-    decode_mac_BER.h DESTINATION include/ieee802_11
+    decode_mac_BER.h
+    frame_equalizer_debug.h
+    decode_mac_EVM.h DESTINATION include/ieee802_11
 )

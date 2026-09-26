@@ -18,5 +18,7 @@ install(FILES
     ieee802_11_sync_long.block.yml
     ieee802_11_sync_short.block.yml
     ieee802_11_append_crc32.block.yml
-    ieee802_11_decode_mac_BER.block.yml DESTINATION share/gnuradio/grc/blocks
+    ieee802_11_decode_mac_BER.block.yml
+    ieee802_11_frame_equalizer_debug.block.yml
+    ieee802_11_decode_mac_EVM.block.yml DESTINATION share/gnuradio/grc/blocks
 )

@@ -30,10 +30,7 @@ outputs:
   id: out
   optional: true
 - domain: message
-  id: pre_viterbi
-  optional: true
-- domain: message
-  id: corrected_coded
+  id: coded_bits
   optional: true
 
 file_format: 1

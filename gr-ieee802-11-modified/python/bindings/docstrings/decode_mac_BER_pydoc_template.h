@@ -19,16 +19,17 @@
  static const char *__doc_gr_ieee802_11_decode_mac_BER = R"doc(
 Decode IEEE 802.11 MAC frames and publish comparable coded-bit vectors.
 
-For FCS-valid frames of at least two OFDM symbols, `pre_viterbi` contains
-hard-decision coded bits after deinterleaving and `corrected_coded` contains
-the Viterbi-decoded bits re-encoded and punctured at the frame's original rate.
-Both ports publish `(metadata, u8vector)` pairs with the same bit order and
-length: (number of OFDM symbols - 1) * coded bits per OFDM symbol. The final
-symbol is omitted to exclude padding bits. The re-encoded tail is reset to
-zero because it may start before that symbol. Hamming distance divided by
-vector length estimates pre-FEC coded-bit errors. Failed frames produce no
-messages; single-symbol frames produce only an `out` PDU. `out` publishes
-CRC-valid MAC payload PDUs.
+For FCS-valid frames of at least two OFDM symbols, the `coded_bits` port
+publishes a PDU whose payload is a pair of u8vectors:
+`(pre_viterbi, corrected_coded)`. `pre_viterbi` contains hard-decision coded
+bits after deinterleaving, and `corrected_coded` contains the Viterbi-decoded
+bits re-encoded and punctured at the frame's original rate. Both vectors have
+the same bit order and length: (number of OFDM symbols - 1) * coded bits per
+OFDM symbol. The final symbol is omitted to exclude padding bits. The
+re-encoded tail is reset to zero because it may start before that symbol.
+Hamming distance divided by vector length estimates pre-FEC coded-bit errors.
+Failed frames produce no messages; single-symbol frames produce only an `out`
+PDU. `out` publishes CRC-valid MAC payload PDUs.
 )doc";
 
 

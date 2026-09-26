@@ -675,8 +675,8 @@
  * <http://www.gnu.org/philosophy/why-not-lgpl.html>.
  */
 
-#ifndef INCLUDED_IEEE802_11_DECODE_MAC_BER_H
-#define INCLUDED_IEEE802_11_DECODE_MAC_BER_H
+#ifndef INCLUDED_IEEE802_11_DECODE_MAC_EVM_H
+#define INCLUDED_IEEE802_11_DECODE_MAC_EVM_H
 
 #include <gnuradio/block.h>
 #include <ieee802_11/api.h>
@@ -685,31 +685,35 @@ namespace gr {
 namespace ieee802_11 {
 
 /*!
- * \brief Decode 802.11 MAC frames and publish comparable coded-bit vectors.
+ * \brief Decode 802.11 MAC frames and publish coded bits and IQ vectors.
  *
- * For FCS-valid frames of at least two OFDM symbols, `pre_viterbi` publishes
- * hard-decision coded bits after deinterleaving and `corrected_coded` publishes
- * the Viterbi-decoded bits re-encoded and punctured at the frame's original
- * rate. Both ports publish `(metadata, u8vector)` pairs with the same bit order
- * and length: (number of OFDM symbols - 1) * coded bits per OFDM symbol.
- * The final symbol is omitted to exclude padding bits. The re-encoded tail is
- * reset to zero because it may start before that symbol. Hamming distance
- * divided by vector length estimates pre-FEC coded-bit errors. Failed frames
- * produce no messages; single-symbol frames produce only an `out` PDU. The
- * `out` port publishes CRC-valid MAC payloads as PDUs.
+ * For FCS-valid frames of at least two OFDM symbols, the `diag` port publishes
+ * a PDU whose payload is a dictionary containing `pre_viterbi` and
+ * `corrected_coded` u8vectors, plus `transmitted_iq`, `received_iq`, and
+ * `equalized_iq` complex vectors when IQ data is available. `pre_viterbi`
+ * contains hard-decision coded bits after deinterleaving, and
+ * `corrected_coded` contains the Viterbi-decoded bits re-encoded and punctured
+ * at the frame's original rate. Both vectors have the same bit order and
+ * length: (number of OFDM symbols - 1) * coded bits per OFDM symbol. The final
+ * symbol is omitted to exclude padding bits. The re-encoded tail is reset to
+ * zero because it may start before that symbol. The IQ vectors are flattened,
+ * with the final OFDM symbol omitted. `received_iq` is the frame equalizer's
+ * `unequalized_iq` data. Failed frames produce no messages; single-symbol
+ * frames produce only an `out` PDU. The `out` port publishes CRC-valid MAC
+ * payloads as PDUs.
  * \ingroup ieee802_11
  */
-class IEEE802_11_API decode_mac_BER : virtual public gr::block
+class IEEE802_11_API decode_mac_EVM : virtual public gr::block
 {
 public:
-    typedef std::shared_ptr<decode_mac_BER> sptr;
+    typedef std::shared_ptr<decode_mac_EVM> sptr;
 
     /*!
-     * \brief Return a shared_ptr to a new instance of ieee802_11::decode_mac_BER.
+     * \brief Return a shared_ptr to a new instance of ieee802_11::decode_mac_EVM.
      *
-     * To avoid accidental use of raw pointers, ieee802_11::decode_mac_BER's
+     * To avoid accidental use of raw pointers, ieee802_11::decode_mac_EVM's
      * constructor is in a private implementation
-     * class. ieee802_11::decode_mac_BER::make is the public interface for
+     * class. ieee802_11::decode_mac_EVM::make is the public interface for
      * creating new instances.
      */
     static sptr make(bool log = false, bool debug = false);
@@ -718,4 +722,4 @@ public:
 } // namespace ieee802_11
 } // namespace gr
 
-#endif /* INCLUDED_IEEE802_11_DECODE_MAC_BER_H */
+#endif /* INCLUDED_IEEE802_11_DECODE_MAC_EVM_H */

@@ -35,6 +35,8 @@ void bind_sync_long(py::module& m);
 void bind_sync_short(py::module& m);
 void bind_append_crc32(py::module& m);
 void bind_decode_mac_BER(py::module& m);
+    void bind_frame_equalizer_debug(py::module& m);
+    void bind_decode_mac_EVM(py::module& m);
 // ) END BINDING_FUNCTION_PROTOTYPES
 
 
@@ -78,5 +80,7 @@ PYBIND11_MODULE(ieee802_11_python, m)
     bind_sync_short(m);
     bind_append_crc32(m);
     bind_decode_mac_BER(m);
+    bind_frame_equalizer_debug(m);
+    bind_decode_mac_EVM(m);
     // ) END BINDING_FUNCTION_CALLS
 }

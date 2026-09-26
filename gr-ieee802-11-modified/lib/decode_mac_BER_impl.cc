@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013, 2016 Bastian Bloessl <bloessl@ccs-labs.org>
+ * Modified by Kyeong Su Shin <ksshin@postech.ac.kr>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,7 +15,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <ieee802_11/decode_mac.h>
+ 
+#include <ieee802_11/decode_mac_BER.h>
 
 #include "utils.h"
 #include "viterbi_decoder/viterbi_decoder.h"
@@ -22,17 +24,18 @@
 #include <gnuradio/io_signature.h>
 #include <boost/crc.hpp>
 #include <iomanip>
+#include <vector>
 
 using namespace gr::ieee802_11;
 
 #define LINKTYPE_IEEE802_11 105 /* http://www.tcpdump.org/linktypes.html */
 
-class decode_mac_impl : public decode_mac
+class decode_mac_BER_impl : public decode_mac_BER
 {
 
 public:
-    decode_mac_impl(bool log, bool debug)
-        : block("decode_mac",
+    decode_mac_BER_impl(bool log, bool debug)
+        : block("decode_mac_BER",
                 gr::io_signature::make(1, 1, 48),
                 gr::io_signature::make(0, 0, 0)),
           d_log(log),
@@ -42,6 +45,7 @@ public:
           d_frame_complete(true)
     {
         message_port_register_out(pmt::mp("out"));
+        message_port_register_out(pmt::mp("coded_bits"));
     }
 
     int general_work(int noutput_items,
@@ -63,7 +67,17 @@ public:
 
             get_tags_in_range(tags, 0, nread + i, nread + i + 1);
 
-            if (tags.size()) {
+            const pmt::pmt_t frame_bytes_key = pmt::mp("frame bytes");
+            const pmt::pmt_t iqdata_key = pmt::mp("iqdata");
+            bool frame_start = false;
+            for (const auto& tag : tags) {
+                if (pmt::eq(tag.key, frame_bytes_key)) {
+                    frame_start = true;
+                    break;
+                }
+            }
+
+            if (frame_start) {
                 if (d_frame_complete == false) {
                     dout << "Warning: starting to receive new frame before old frame was "
                             "complete"
@@ -75,8 +89,11 @@ public:
 
                 // Enter tags into metadata dictionary
                 d_meta = pmt::make_dict();
-                for (auto tag : tags)
-                    d_meta = pmt::dict_add(d_meta, tag.key, tag.value);
+                for (const auto& tag : tags) {
+                    if (!pmt::eq(tag.key, iqdata_key)) {
+                        d_meta = pmt::dict_add(d_meta, tag.key, tag.value);
+                    }
+                }
 
                 int len_data = pmt::to_uint64(pmt::dict_ref(
                     d_meta, pmt::mp("frame bytes"), pmt::from_uint64(MAX_PSDU_SIZE + 1)));
@@ -135,6 +152,7 @@ public:
 
         deinterleave();
         uint8_t* decoded = d_decoder.decode(&d_ofdm, &d_frame, d_deinterleaved_bits);
+
         descramble(decoded);
         print_output();
 
@@ -144,6 +162,27 @@ public:
         if (result.checksum() != 558161692) {
             dout << "checksum wrong -- dropping" << std::endl;
             return;
+        }
+
+        // Drop the last OFDM symbol: it contains all padding bits. The tail
+        // can start in the preceding symbol, so reset it before re-encoding.
+        if (d_frame.n_sym > 1) {
+            int n_ber_bits = (d_frame.n_sym - 1) * d_ofdm.n_cbps;
+            std::vector<uint8_t> pre_viterbi_bits(d_deinterleaved_bits,
+                                                  d_deinterleaved_bits + n_ber_bits);
+            std::vector<char> corrected_bits(decoded, decoded + d_frame.n_data_bits);
+            reset_tail_bits(corrected_bits.data(), d_frame);
+            std::vector<char> encoded_bits(d_frame.n_data_bits * 2);
+            std::vector<char> corrected_coded(d_frame.n_encoded_bits);
+            convolutional_encoding(corrected_bits.data(), encoded_bits.data(), d_frame);
+            puncturing(encoded_bits.data(), corrected_coded.data(), d_frame, d_ofdm);
+            std::vector<uint8_t> corrected_coded_bits(corrected_coded.begin(),
+                                                      corrected_coded.begin() + n_ber_bits);
+
+            pmt::pmt_t coded_bits = pmt::cons(
+                pmt::init_u8vector(pre_viterbi_bits.size(), pre_viterbi_bits),
+                pmt::init_u8vector(corrected_coded_bits.size(), corrected_coded_bits));
+            message_port_pub(pmt::mp("coded_bits"), pmt::cons(d_meta, coded_bits));
         }
 
         mylog("encoding: {} - length: {} - symbols: {}",
@@ -183,7 +222,6 @@ public:
             }
         }
     }
-
 
     void descramble(uint8_t* decoded_bits)
     {
@@ -252,7 +290,7 @@ private:
     bool d_frame_complete;
 };
 
-decode_mac::sptr decode_mac::make(bool log, bool debug)
+decode_mac_BER::sptr decode_mac_BER::make(bool log, bool debug)
 {
-    return gnuradio::get_initial_sptr(new decode_mac_impl(log, debug));
+    return gnuradio::get_initial_sptr(new decode_mac_BER_impl(log, debug));
 }
