@@ -10,6 +10,7 @@
 # Setup library
 ########################################################################
 include(GrPlatform) #define LIB_SUFFIX
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 check_include_file("xmmintrin.h" SSE2_SUPPORTED)
 
 if(SSE2_SUPPORTED)
@@ -25,6 +26,8 @@ list(APPEND ieee802_11_sources
     constellations_impl.cc
     decode_mac.cc
     equalizer/base.cc
+    equalizer/channel_ai_model.cc
+    equalizer/cnn.cc
     equalizer/comb.cc
     equalizer/ls.cc
     equalizer/lms.cc
@@ -65,6 +68,7 @@ endif(NOT ieee802_11_sources)
 
 add_library(gnuradio-ieee802_11 SHARED ${ieee802_11_sources})
 target_link_libraries(gnuradio-ieee802_11
+        PUBLIC
         gnuradio::gnuradio-runtime
         gnuradio::gnuradio-filter
         gnuradio::gnuradio-blocks
@@ -72,6 +76,7 @@ target_link_libraries(gnuradio-ieee802_11
         gnuradio::gnuradio-fft
         gnuradio::gnuradio-digital
         Volk::volk
+        PRIVATE Eigen3::Eigen
         )
 target_include_directories(gnuradio-ieee802_11
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
@@ -101,6 +106,18 @@ message(STATUS "Building for version: ${VERSION} / ${LIBVER}")
 # Build and register unit test
 ########################################################################
 include(GrTest)
+add_executable(qa_channel_ai qa_channel_ai.cc equalizer/channel_ai_model.cc
+    equalizer/cnn.cc equalizer/base.cc constellations_impl.cc)
+target_link_libraries(qa_channel_ai PRIVATE Eigen3::Eigen gnuradio::gnuradio-digital)
+target_include_directories(qa_channel_ai PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+target_compile_definitions(qa_channel_ai PRIVATE EIGEN_RUNTIME_NO_MALLOC)
+if(MSVC)
+    target_compile_options(qa_channel_ai PRIVATE /UNDEBUG)
+else()
+    target_compile_options(qa_channel_ai PRIVATE -UNDEBUG)
+endif()
+add_test(NAME qa_channel_ai COMMAND ${PYTHON_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/qa_channel_ai.py $<TARGET_FILE:qa_channel_ai>)
 
 # If your unit tests require special include paths, add them here
 #include_directories()

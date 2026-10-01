@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(frame_equalizer.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(16ff5ed7a4d765b220d8e93bba89c627)                     */
+/* BINDTOOL_HEADER_FILE_HASH(c4a56168db5797236fb0e921902f15a6)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -76,6 +76,8 @@ void bind_frame_equalizer(py::module& m)
         .value("LMS", ::gr::ieee802_11::LMS) // 1
         .value("COMB", ::gr::ieee802_11::COMB) // 2
         .value("STA", ::gr::ieee802_11::STA) // 3
+        .value("CNN", ::gr::ieee802_11::CNN)
+        .value("CNN_MLP", ::gr::ieee802_11::CNN_MLP)
         .export_values()
     ;
 
@@ -84,8 +86,6 @@ void bind_frame_equalizer(py::module& m)
 
 
 }
-
-
 
 
 

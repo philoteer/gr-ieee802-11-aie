@@ -31,6 +31,8 @@ enum Equalizer {
     LMS = 1,
     COMB = 2,
     STA = 3,
+    CNN = 4,
+    CNN_MLP = 5,
 };
 
 

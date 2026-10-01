@@ -28,10 +28,11 @@ bits re-encoded and punctured at the frame's original rate. Both vectors have
 the same bit order and length: (number of OFDM symbols - 1) * coded bits per
 OFDM symbol. The final symbol is omitted to exclude padding bits. The
 re-encoded tail is reset to zero because it may start before that symbol. The
-IQ vectors are flattened, with the final OFDM symbol omitted. `received_iq` is
-the frame equalizer's `unequalized_iq` data. Failed frames produce no messages;
-single-symbol frames produce only an `out` PDU. `out` publishes CRC-valid MAC
-payload PDUs; no EVM is calculated.
+IQ vectors are flattened, with the final OFDM symbol omitted. `transmitted_iq`
+and `equalized_iq` contain 48 data tones per symbol; `received_iq` is the frame
+equalizer's `unequalized_iq` data and contains all 52 occupied tones, including
+pilots. Failed frames produce no messages; single-symbol frames produce only an
+`out` PDU. `out` publishes CRC-valid MAC payload PDUs; no EVM is calculated.
 )doc";
 
 

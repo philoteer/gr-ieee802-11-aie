@@ -17,6 +17,7 @@
 
 #include "equalizer/base.h"
 #include "equalizer/comb.h"
+#include "equalizer/cnn.h"
 #include "equalizer/lms.h"
 #include "equalizer/ls.h"
 #include "equalizer/sta.h"
@@ -89,6 +90,12 @@ void frame_equalizer_impl::set_algorithm(Equalizer algo)
     case STA:
         dout << "STA" << std::endl;
         d_equalizer = new equalizer::sta();
+        break;
+    case CNN:
+        d_equalizer = new equalizer::cnn();
+        break;
+    case CNN_MLP:
+        d_equalizer = new equalizer::cnn(true);
         break;
     default:
         throw std::runtime_error("Algorithm not implemented");
