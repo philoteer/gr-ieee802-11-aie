@@ -39,29 +39,25 @@ def select_gate(model: QuantizedEstimator, corpus: ChannelCorpus) -> tuple[int, 
 
 
 def select_estimate_gate(cnn: np.ndarray, corpus: ChannelCorpus) -> tuple[int, dict[str, float]]:
-    actual = corpus.truth[:, OCCUPIED, 0] + 1j * corpus.truth[:, OCCUPIED, 1]
-    cnn_complex = cnn[:, OCCUPIED, 0] + 1j * cnn[:, OCCUPIED, 1]
-    ls_complex = corpus.ls[:, OCCUPIED, 0] + 1j * corpus.ls[:, OCCUPIED, 1]
-    cnn_safe = np.where(np.abs(cnn_complex) > 1e-9, cnn_complex, 1e-9 + 0j)
-    ls_safe = np.where(np.abs(ls_complex) > 1e-9, ls_complex, 1e-9 + 0j)
-    cnn_evm = np.sqrt(np.mean(np.abs(actual / cnn_safe - 1.0) ** 2, axis=1))
-    ls_evm = np.sqrt(np.mean(np.abs(actual / ls_safe - 1.0) ** 2, axis=1))
+    actual = corpus.truth[:, OCCUPIED].astype(np.float64)
+    cnn_mse = np.mean((cnn[:, OCCUPIED].astype(np.float64) - actual) ** 2, axis=(1, 2))
+    ls_mse = np.mean((corpus.ls[:, OCCUPIED].astype(np.float64) - actual) ** 2, axis=(1, 2))
     candidates = [0] + [int(round(32.0 * 10.0 ** (db / 10.0)))
                   for db in np.arange(0.0, 40.5, 0.5)]
     candidates.append(np.iinfo(np.uint64).max)
     best_threshold = candidates[-1]
     best_metrics = metrics(cnn, corpus.truth)
-    best_score = float(np.mean(cnn_evm))
+    best_score = float(np.mean(cnn_mse))
     for threshold in candidates:
         use_ls = corpus.snr_ratio_x16 >= threshold
-        score = float(np.mean(np.where(use_ls, ls_evm, cnn_evm)))
+        score = float(np.mean(np.where(use_ls, ls_mse, cnn_mse)))
         if score < best_score:
             estimate = cnn.copy()
             estimate[use_ls] = corpus.ls[use_ls]
             best_threshold = threshold
             best_metrics = metrics(estimate, corpus.truth)
             best_score = score
-    best_metrics["mean_frame_evm"] = best_score
+    best_metrics["mean_frame_mse"] = best_score
     return int(best_threshold), best_metrics
 
 

@@ -130,6 +130,29 @@ def test_early_stopping_restores_best_validation_weights():
         assert torch.equal(value, stopped.state_dict()[name])
 
 
+def test_cnn_gate_minimizes_mse_instead_of_evm():
+    corpus = _sample_corpus(2)
+    corpus.truth[:, OCCUPIED, 0] = np.asarray([100, 10000])[:, None]
+    corpus.ls[:, OCCUPIED, 0] = np.asarray([80, 11100])[:, None]
+    corpus.snr_ratio_x16[:] = [32, 320000]
+    prediction = corpus.truth.copy()
+    prediction[:, OCCUPIED, 0] = np.asarray([110, 9000])[:, None]
+    gate, result = verification.select_estimate_gate(prediction, corpus)
+    assert gate == np.iinfo(np.uint64).max
+    assert result['mean_frame_mse'] == 250025.0
+    assert verification.metrics(corpus.ls[1:], corpus.truth[1:])['equalization_evm'] < \
+        verification.metrics(prediction[1:], corpus.truth[1:])['equalization_evm']
+    candidates = [0] + [int(round(32 * 10 ** (db / 10)))
+                        for db in np.arange(0, 40.5, 0.5)] + [gate]
+    for threshold in candidates:
+        estimate = prediction.copy()
+        use_ls = corpus.snr_ratio_x16 >= threshold
+        estimate[use_ls] = corpus.ls[use_ls]
+        mse = np.mean((estimate[:, OCCUPIED].astype(np.float64) -
+                       corpus.truth[:, OCCUPIED]) ** 2)
+        assert result['mean_frame_mse'] <= mse
+
+
 def test_noise_augmentation_is_reproducible_and_training_only():
     corpus = _sample_corpus(4)
     _, clean_losses, _, _ = train_model(corpus, corpus, 2, 2, 0.002, 40, noise_std=0)
