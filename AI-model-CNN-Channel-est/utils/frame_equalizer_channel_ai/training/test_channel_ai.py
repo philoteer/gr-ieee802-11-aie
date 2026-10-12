@@ -164,6 +164,19 @@ def test_snr_feature_is_logarithmic_and_bounded():
     assert values[-1] == 32767
 
 
+def test_updater_augmentation_preserves_snr_and_inputs():
+    inputs = torch.zeros((3, 61))
+    inputs[:, 60] = 0.5
+    assert _augment_inputs(inputs, 0, torch.Generator().manual_seed(3), 60) is inputs
+    augmented = _augment_inputs(inputs, 0.02, torch.Generator().manual_seed(3), 60)
+    repeated = _augment_inputs(inputs, 0.02, torch.Generator().manual_seed(3), 60)
+    assert torch.equal(augmented, repeated)
+    assert torch.count_nonzero(augmented[:, :52]) > 0
+    assert torch.count_nonzero(augmented[:, 52:60]) > 0
+    assert torch.equal(augmented[:, 60], inputs[:, 60])
+    assert torch.count_nonzero(inputs[:, :60]) == 0
+
+
 def test_float_updater_export_preserves_group_layout(tmp_path):
     rng = np.random.default_rng(42)
     first = rng.integers(-128, 128, (4, 64, 16), dtype=np.int8)
@@ -200,15 +213,30 @@ def test_updater_training_checkpoint_reexports_both_backends(tmp_path, monkeypat
                         ({name: [None] for name in ('train', 'val', 'test')},
                          {name: {} for name in ('train', 'val', 'test')}))
     monkeypatch.setattr(updater, 'assemble', lambda *args: data)
+    calls = []
+    def augment(batch, noise_std, generator, signal_features):
+        calls.append((batch.clone(), noise_std, signal_features))
+        return _augment_inputs(batch, noise_std, generator, signal_features)
+    monkeypatch.setattr(updater, '_augment_inputs', augment)
     args = updater.parser().parse_args([
         '--epochs', '1', '--checkpoint', str(tmp_path / 'updater.pt'),
         '--cnn-header', str(tmp_path / 'cnn.h'), '--header', str(tmp_path / 'q.h'),
         '--cpu-header', str(tmp_path / 'float.h'), '--report', str(tmp_path / 'report.json')])
     args.cnn_header.write_text('test')
     updater.train(args)
+    assert len(calls) == 4
+    assert all(noise == 0.02 and features == 60 for _, noise, features in calls)
+    assert all(len(batch) == len(data[0]) for batch, _, _ in calls)
     expected = (args.header.read_bytes(), args.cpu_header.read_bytes())
     models, metadata = updater.load_checkpoint(args.checkpoint)
     assert len(models) == 4 and 'cpu_gate_snr_ratio_x16' in metadata
+    assert metadata['noise_std'] == 0.02
+    updater.train(args)
+    repeated_models, repeated_metadata = updater.load_checkpoint(args.checkpoint)
+    for model, repeated in zip(models, repeated_models):
+        for name, value in model.state_dict().items():
+            assert torch.equal(value, repeated.state_dict()[name])
+    assert metadata['validation_loss_by_group'] == repeated_metadata['validation_loss_by_group']
     args.export_checkpoint = args.checkpoint
     updater.train(args)
     assert expected == (args.header.read_bytes(), args.cpu_header.read_bytes())

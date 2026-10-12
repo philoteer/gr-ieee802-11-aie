@@ -10,12 +10,12 @@ from ..common.model import ChannelEstimator
 
 
 def _augment_inputs(batch: torch.Tensor, noise_std: float,
-                    generator: torch.Generator) -> torch.Tensor:
+                    generator: torch.Generator, signal_features: int = 4) -> torch.Tensor:
     if not noise_std:
         return batch
-    strength = torch.rand((len(batch), 1, 1), generator=generator) * noise_std
-    noise = torch.randn(batch[:, :4].shape, generator=generator) * strength
-    return torch.cat((batch[:, :4] + noise, batch[:, 4:]), dim=1)
+    strength = torch.rand((len(batch),) + (1,) * (batch.ndim - 1), generator=generator) * noise_std
+    noise = torch.randn(batch[:, :signal_features].shape, generator=generator) * strength
+    return torch.cat((batch[:, :signal_features] + noise, batch[:, signal_features:]), dim=1)
 
 
 def train_model(corpus: ChannelCorpus, validation: ChannelCorpus, epochs: int,

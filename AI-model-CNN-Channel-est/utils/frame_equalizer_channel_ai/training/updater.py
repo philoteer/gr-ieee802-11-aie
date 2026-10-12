@@ -25,6 +25,7 @@ from utils.frame_equalizer_channel_ai.dataset_generator.split_sigmf import load_
 from utils.frame_equalizer_channel_ai.training.exporter import (
     DEFAULT_CPU_DIRECTORY, _initializer, export_trained_updater,
 )
+from utils.frame_equalizer_channel_ai.training.model import _augment_inputs
 
 
 class Updater(nn.Module):
@@ -181,6 +182,8 @@ def train(args):
         print(args.header)
         print(args.cpu_header)
         return
+    if args.noise_std < 0:
+        raise ValueError('noise must be nonnegative')
     torch.manual_seed(args.seed)
     torch.use_deterministic_algorithms(True)
     cnn = load_cnn_header(args.cnn_header)
@@ -199,6 +202,7 @@ def train(args):
         vx = torch.from_numpy(data['validation'][0][:, group].astype(np.float32) / 32768.0)
         vy = torch.from_numpy(data['validation'][1][:, group].astype(np.float32) / 32768.0)
         rng = torch.Generator().manual_seed(args.seed + group)
+        noise_generator = torch.Generator().manual_seed(args.seed + 4 + group)
         best = float('inf')
         best_weights = deepcopy(model.state_dict())
         stalled = 0
@@ -207,7 +211,8 @@ def train(args):
             model.train()
             for indices in torch.randperm(len(x), generator=rng).split(args.batch_size):
                 optimizer.zero_grad(set_to_none=True)
-                loss = torch.mean((model(x[indices]) - y[indices]) ** 2)
+                inputs = _augment_inputs(x[indices], args.noise_std, noise_generator, signal_features=60)
+                loss = torch.mean((model(inputs) - y[indices]) ** 2)
                 loss.backward()
                 optimizer.step()
             model.eval()
@@ -231,6 +236,7 @@ def train(args):
     cpu_gate = min(candidates, key=lambda value: score(data['validation'], float_validation, value)[0])
     report = {'seed': args.seed, 'epochs': args.epochs, 'patience': args.patience,
               'batch_size': args.batch_size, 'learning_rate': args.learning_rate,
+              'noise_std': args.noise_std,
               'split_mode': args.split_mode, 'recordings': str(args.recordings / args.split_mode),
               'reference_radius': args.reference_radius,
               'min_reference_symbols': args.min_reference_symbols,
@@ -281,6 +287,7 @@ def parser():
     result.add_argument('--patience', type=int, default=6)
     result.add_argument('--batch-size', type=int, default=256)
     result.add_argument('--learning-rate', type=float, default=0.001)
+    result.add_argument('--noise-std', type=float, default=0.02)
     result.add_argument('--threads', type=int, default=2)
     return result
 
