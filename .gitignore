@@ -22,6 +22,9 @@ frame_equalizer_realtime_test.py
 *.iqdata.hdr
 *.pcap
 
+# Temporary experiment outputs
+/AI-model-CNN-Channel-est/data/tmp_out/
+
 # AIE build artifacts
 *.o
 *.xo
@@ -32,4 +35,3 @@ libadf.a
 insts.bin
 aie.mlir
 warning_not_vectorized
-
