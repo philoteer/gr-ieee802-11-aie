@@ -33,18 +33,6 @@ options:
     state: enabled
 
 blocks:
-- name: data_dir
-  id: variable
-  parameters:
-    comment: 'Dataset paths are relative to the generated script in Experiments/energy.'
-    value: 'str(__import__("pathlib").Path(globals().get("__file__", "Experiments/energy/wifi_rx.py")).resolve().parents[2] / "AI-model-CNN-Channel-est" / "data")'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [464, 88.0]
-    rotation: 0
-    state: enabled
 - name: chan_est
   id: variable
   parameters:
@@ -54,14 +42,27 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [168, 12.0]
+    coordinate: [184, 12.0]
+    rotation: 0
+    state: enabled
+- name: data_dir
+  id: variable
+  parameters:
+    comment: Dataset paths are relative to the generated script in Experiments/energy.
+    value: str(__import__("pathlib").Path(globals().get("__file__", "Experiments/energy/wifi_rx.py")).resolve().parents[2]
+      / "AI-model-CNN-Channel-est" / "data")
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [464, 88.0]
     rotation: 0
     state: enabled
 - name: file_path
   id: variable
   parameters:
     comment: ''
-    value: 'data_dir + "/raw_capture/stress_test.sigmf"'
+    value: data_dir + "/raw_capture/stress_test.sigmf"
   states:
     bus_sink: false
     bus_source: false
@@ -73,7 +74,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: 'data_dir + "/raw_capture/room_20260927.sigmf"'
+    value: data_dir + "/raw_capture/room_20260927.sigmf"
   states:
     bus_sink: false
     bus_source: false
@@ -85,7 +86,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: 'data_dir + "/raw_capture/206.sigmf"'
+    value: data_dir + "/raw_capture/206.sigmf"
   states:
     bus_sink: false
     bus_source: false
@@ -126,7 +127,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [8, 148.0]
+    coordinate: [24, 180.0]
     rotation: 0
     state: enabled
 - name: window_size
@@ -138,7 +139,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [8, 80.0]
+    coordinate: [24, 108.0]
     rotation: 0
     state: enabled
 - name: blocks_complex_to_mag_0
@@ -435,7 +436,7 @@ blocks:
     minoutbuf: '0'
   states:
     _io_cache: ('IQ Tag Frequency Retuner', 'blk', [('frequency_callback', '<function
-      blk.<lambda> at 0x753dbe782340>')], [('0', 'complex', 1)], [], '', ['frequency_callback'])
+      blk.<lambda> at 0x796a20150ae0>')], [('0', 'complex', 1)], [], '', ['frequency_callback'])
     bus_sink: false
     bus_source: false
     bus_structure: null
