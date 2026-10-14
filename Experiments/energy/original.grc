@@ -416,6 +416,189 @@ blocks:
     coordinate: [1160, 512.0]
     rotation: 0
     state: enabled
+- name: epy_block_energy_logger
+  id: epy_block
+  parameters:
+    _source_code: |
+      import atexit
+      import csv
+      from pathlib import Path
+      import threading
+      import time
+
+      import numpy as np
+      from gnuradio import gr
+
+
+      class blk(gr.sync_block):
+          """Sample energy until finish_logging() is called after top_block.wait()."""
+
+          def __init__(self, csv_path="original_energy.csv", interval=0.5,
+                       rapl_path="/sys/class/powercap/intel-rapl:0",
+                       power_supply_path="/sys/class/power_supply"):
+              gr.sync_block.__init__(self, name="Run Energy Logger",
+                                     in_sig=[np.complex64], out_sig=None)
+              if interval < 0.05:
+                  raise ValueError("Energy sampling interval must be at least 0.05 s")
+              self.csv_path = Path(csv_path)
+              self.interval = interval
+              self.rapl = Path(rapl_path)
+              self.supplies = Path(power_supply_path)
+              self.samples = 0
+              self._done = threading.Event()
+              self._thread = None
+              self._file = None
+              self._error = None
+              self._previous = None
+              self._energy_j = 0.0
+
+          @staticmethod
+          def _read(path):
+              return path.read_text().strip()
+
+          def _battery_reading(self):
+              # ACPI sysfs is also the source of sensors' BAT0-acpi power1.
+              online = any(int(self._read(path / "online")) != 0
+                           for path in self._external)
+              status = self._read(self._battery / "status")
+              unplugged = not online and status == "Discharging"
+              if not unplugged:
+                  return online, status, "", ""
+              watts = int(self._read(self._battery / "power_now")) / 1e6
+              joules = int(self._read(self._battery / "energy_now")) * 0.0036
+              return online, status, watts, joules
+
+          def _sample(self, phase):
+              counter = int(self._read(self.rapl / "energy_uj"))
+              now = time.monotonic_ns()
+              wall = time.time_ns()
+              online, status, system_w, battery_j = self._battery_reading()
+              power_w = ""
+              if self._previous is None:
+                  self._start_ns = now
+              else:
+                  previous_ns, previous_counter = self._previous
+                  delta = counter - previous_counter
+                  if delta < 0:
+                      delta += self._range_uj
+                  self._energy_j += delta / 1e6
+                  power_w = delta * 1000.0 / (now - previous_ns)
+              self._previous = now, counter
+              self._writer.writerow({
+                  "phase": phase,
+                  "unix_time_ns": wall,
+                  "elapsed_s": (now - self._start_ns) / 1e9,
+                  "samples_processed": self.samples,
+                  "rapl_domain": self._domain,
+                  "rapl_energy_uj": counter,
+                  "rapl_max_energy_range_uj": self._range_uj,
+                  "soc_energy_j": self._energy_j,
+                  "soc_power_w": power_w,
+                  "ac_online": int(online),
+                  "battery_status": status,
+                  "system_power_w": system_w,
+                  "battery_energy_j": battery_j,
+              })
+              self._file.flush()
+
+          def start(self):
+              self.csv_path = Path(self.csv_path)
+              self.rapl = Path(self.rapl)
+              self.supplies = Path(self.supplies)
+              self.samples = 0
+              self._previous = None
+              self._energy_j = 0.0
+              self._error = None
+              self._done.clear()
+              self._range_uj = int(self._read(self.rapl / "max_energy_range_uj"))
+              self._domain = self._read(self.rapl / "name")
+              batteries = [p for p in self.supplies.iterdir()
+                           if (p / "type").exists() and self._read(p / "type") == "Battery"]
+              if len(batteries) != 1:
+                  raise RuntimeError("Energy logger requires exactly one battery")
+              self._battery = batteries[0]
+              self._external = [p for p in self.supplies.iterdir()
+                                if p != self._battery and (p / "online").exists()]
+              if not self._external:
+                  raise RuntimeError("No external power supply online indicator found")
+              self.csv_path.parent.mkdir(parents=True, exist_ok=True)
+              self._file = self.csv_path.open("w", newline="")
+              self._writer = csv.DictWriter(self._file, fieldnames=[
+                  "phase", "unix_time_ns", "elapsed_s", "samples_processed",
+                  "rapl_domain", "rapl_energy_uj", "rapl_max_energy_range_uj",
+                  "soc_energy_j", "soc_power_w", "ac_online", "battery_status",
+                  "system_power_w", "battery_energy_j"])
+              self._writer.writeheader()
+              try:
+                  self._sample("start")
+              except Exception:
+                  self._file.close()
+                  self._file = None
+                  raise
+              self._thread = threading.Thread(target=self._monitor, daemon=True)
+              self._thread.start()
+              atexit.register(self.finish_logging)
+              return True
+
+          def _monitor(self):
+              while not self._done.wait(self.interval):
+                  try:
+                      self._sample("sample")
+                  except Exception as error:
+                      self._error = error
+                      return
+
+          def finish_logging(self):
+              # The IQ branch can finish before the decoder. Do not finalize in
+              # block.stop(): the flowgraph's after-stop snippet calls this after wait().
+              if self._file is None:
+                  return
+              self._done.set()
+              self._thread.join()
+              try:
+                  if self._error is not None:
+                      raise RuntimeError("Energy sampling failed") from self._error
+                  self._sample("end")
+              finally:
+                  self._file.close()
+                  self._file = None
+                  atexit.unregister(self.finish_logging)
+
+          def work(self, input_items, output_items):
+              count = len(input_items[0])
+              self.samples += count
+              return count
+    affinity: ''
+    alias: ''
+    comment: 'Logs through top_block.wait(); paired with energy_logger_finish snippet.'
+    csv_path: data_dir + "/tmp_out/original_energy.csv"
+    interval: '0.5'
+    rapl_path: '"/sys/class/powercap/intel-rapl:0"'
+    power_supply_path: '"/sys/class/power_supply"'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [288, 644.0]
+    rotation: 0
+    state: enabled
+- name: energy_logger_finish
+  id: snippet
+  parameters:
+    alias: ''
+    comment: 'Finish after all processing, on EOF or SIGINT/SIGTERM.'
+    section: main_after_stop
+    priority: '0'
+    code: self.epy_block_energy_logger.finish_logging()
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 216.0]
+    rotation: 0
+    state: enabled
 - name: epy_block_iq_tag_sink
   id: epy_block
   parameters:
@@ -869,6 +1052,7 @@ connections:
 - [virtual_source_0, '0', blocks_delay_0_0, '0']
 - [virtual_source_0, '0', blocks_multiply_xx_0, '0']
 - [virtual_source_0, '0', epy_block_iq_tag_sink, '0']
+- [virtual_source_0, '0', epy_block_energy_logger, '0']
 - [virtual_source_0_0, '0', blocks_probe_rate_0, '0']
 
 metadata:
