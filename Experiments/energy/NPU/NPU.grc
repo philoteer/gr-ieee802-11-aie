@@ -55,9 +55,33 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [728, 12.0]
+    coordinate: [664, 12.0]
     rotation: 0
     state: enabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/room_20260927.sigmf"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [816, 12.0]
+    rotation: 0
+    state: disabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/206.sigmf"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [984, 12.0]
+    rotation: 0
+    state: disabled
 - name: freq
   id: variable
   parameters:
