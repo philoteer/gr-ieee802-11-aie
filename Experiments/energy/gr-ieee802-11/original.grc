@@ -48,8 +48,8 @@ blocks:
 - name: data_dir
   id: variable
   parameters:
-    comment: Dataset paths are relative to the generated script in Experiments/energy.
-    value: str(__import__("pathlib").Path(globals().get("__file__", "Experiments/energy/wifi_rx.py")).resolve().parents[2]
+    comment: Dataset paths are relative to the generated script in Experiments/energy/gr-ieee802-11.
+    value: str(__import__("pathlib").Path(globals().get("__file__", "Experiments/energy/gr-ieee802-11/wifi_rx.py")).resolve().parents[3]
       / "AI-model-CNN-Channel-est" / "data")
   states:
     bus_sink: false

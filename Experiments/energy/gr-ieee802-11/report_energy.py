@@ -6,7 +6,7 @@ import csv
 from pathlib import Path
 
 
-DEFAULT_CSV = (Path(__file__).resolve().parents[2]
+DEFAULT_CSV = (Path(__file__).resolve().parents[3]
                / "AI-model-CNN-Channel-est/data/tmp_out/original_energy.csv")
 
 
