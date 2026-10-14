@@ -431,11 +431,36 @@ blocks:
 
 
       class blk(gr.sync_block):
-          """Sample energy until finish_logging() is called after top_block.wait()."""
+          """Log package energy and unplugged system power while consuming IQ data.
+
+          GNU Radio starts the monitor before streaming. The flowgraph's after-stop
+          snippet calls finish_logging() after top_block.wait() so measurement also
+          includes downstream decoding after this sink reaches EOF.
+
+          Attributes:
+              csv_path (Path): CSV destination, overwritten at each start.
+              interval (float): Requested delay between sensor readings in seconds.
+              rapl (Path): RAPL package domain directory.
+              supplies (Path): ACPI power supply directory.
+              samples (int): Number of complex IQ samples consumed by this sink.
+          """
 
           def __init__(self, csv_path="original_energy.csv", interval=0.5,
                        rapl_path="/sys/class/powercap/intel-rapl:0",
                        power_supply_path="/sys/class/power_supply"):
+              """Initialize the sink without opening sensors or starting monitoring.
+
+              Args:
+                  csv_path (str): Destination path for the measurement CSV.
+                  interval (float): Sampling delay in seconds, at least 0.05.
+                  rapl_path (str): Directory containing energy_uj, name, and
+                      max_energy_range_uj for the measured RAPL domain.
+                  power_supply_path (str): Directory containing the battery and
+                      external power supply sysfs entries.
+
+              Raises:
+                  ValueError: If interval is less than 0.05 seconds.
+              """
               gr.sync_block.__init__(self, name="Run Energy Logger",
                                      in_sig=[np.complex64], out_sig=None)
               if interval < 0.05:
@@ -454,9 +479,32 @@ blocks:
 
           @staticmethod
           def _read(path):
+              """Read a sysfs attribute and remove surrounding whitespace.
+
+              Args:
+                  path (Path): Attribute file to read.
+
+              Returns:
+                  str: Stripped attribute value.
+
+              Raises:
+                  OSError: If the attribute cannot be read.
+              """
               return path.read_text().strip()
 
           def _battery_reading(self):
+              """Read battery measurements only while unplugged and discharging.
+
+              Returns:
+                  tuple: External power online flag (bool), battery status (str),
+                  discharge power in watts (float), and stored energy in joules
+                  (float). The last two values are empty strings when plugged in
+                  or when the battery is not discharging.
+
+              Raises:
+                  OSError: If a required power supply attribute cannot be read.
+                  ValueError: If a numeric attribute cannot be parsed.
+              """
               # ACPI sysfs is also the source of sensors' BAT0-acpi power1.
               online = any(int(self._read(path / "online")) != 0
                            for path in self._external)
@@ -464,11 +512,26 @@ blocks:
               unplugged = not online and status == "Discharging"
               if not unplugged:
                   return online, status, "", ""
+              # power_now is in microwatts; energy_now is in micro-watt-hours.
               watts = int(self._read(self._battery / "power_now")) / 1e6
               joules = int(self._read(self._battery / "energy_now")) * 0.0036
               return online, status, watts, joules
 
           def _sample(self, phase):
+              """Take one sensor snapshot, update energy totals, and flush a CSV row.
+
+              The first reading establishes the monotonic time and counter baseline.
+              Later readings derive interval-average package power and cumulative
+              energy. Calls must be serialized between startup, the monitor thread,
+              and finalization.
+
+              Args:
+                  phase (str): Row marker: "start", "sample", or "end".
+
+              Raises:
+                  OSError: If a sensor read or CSV write fails.
+                  ValueError: If a numeric sensor attribute cannot be parsed.
+              """
               counter = int(self._read(self.rapl / "energy_uj"))
               now = time.monotonic_ns()
               wall = time.time_ns()
@@ -480,8 +543,10 @@ blocks:
                   previous_ns, previous_counter = self._previous
                   delta = counter - previous_counter
                   if delta < 0:
+                      # Correct one counter wrap between consecutive readings.
                       delta += self._range_uj
                   self._energy_j += delta / 1e6
+                  # Convert microjoules / nanoseconds to joules / second (watts).
                   power_w = delta * 1000.0 / (now - previous_ns)
               self._previous = now, counter
               self._writer.writerow({
@@ -502,6 +567,21 @@ blocks:
               self._file.flush()
 
           def start(self):
+              """Initialize sensors and CSV output, then start background sampling.
+
+              Called by GNU Radio when the flowgraph starts. Takes the baseline
+              reading synchronously before launching the monitor thread and
+              registers an exit-time cleanup fallback.
+
+              Returns:
+                  bool: True when initialization succeeds.
+
+              Raises:
+                  RuntimeError: If there is not exactly one battery or no external
+                      power supply online indicator is available.
+                  OSError: If sensor discovery, attribute reads, or CSV setup fails.
+                  ValueError: If a numeric sensor attribute cannot be parsed.
+              """
               self.csv_path = Path(self.csv_path)
               self.rapl = Path(self.rapl)
               self.supplies = Path(self.supplies)
@@ -541,6 +621,12 @@ blocks:
               return True
 
           def _monitor(self):
+              """Sample periodically until finalization requests a stop.
+
+              Waiting on the event lets finalization wake the thread immediately.
+              Sensor or write errors are saved and re-raised by finish_logging(),
+              leaving the CSV without an end marker.
+              """
               while not self._done.wait(self.interval):
                   try:
                       self._sample("sample")
@@ -549,6 +635,17 @@ blocks:
                       return
 
           def finish_logging(self):
+              """Stop monitoring, take the final reading, and close the CSV.
+
+              Call after top_block.wait() returns. This method is idempotent after
+              the CSV closes. The monitor is joined before the final reading to
+              prevent concurrent writes. Cleanup closes the CSV even on failure.
+
+              Raises:
+                  RuntimeError: If background sampling failed.
+                  OSError: If the final sensor read or CSV write fails.
+                  ValueError: If a final numeric sensor attribute cannot be parsed.
+              """
               # The IQ branch can finish before the decoder. Do not finalize in
               # block.stop(): the flowgraph's after-stop snippet calls this after wait().
               if self._file is None:
@@ -565,6 +662,17 @@ blocks:
                   atexit.unregister(self.finish_logging)
 
           def work(self, input_items, output_items):
+              """Consume IQ samples and update the progress counter.
+
+              Sensor I/O runs in the monitor thread rather than the streaming path.
+
+              Args:
+                  input_items (list): Input arrays; the first contains complex64 IQ.
+                  output_items (list): Unused output arrays because this is a sink.
+
+              Returns:
+                  int: Number of input samples consumed.
+              """
               count = len(input_items[0])
               self.samples += count
               return count
