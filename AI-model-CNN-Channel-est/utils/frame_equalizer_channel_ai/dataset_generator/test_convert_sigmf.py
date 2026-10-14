@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from utils.frame_equalizer_channel_ai.common.dataset import LONG, OCCUPIED
+from utils.frame_equalizer_channel_ai.common.sample_counts import count_samples
 from utils.frame_equalizer_channel_ai.dataset_generator.convert_sigmf import (
     frame_examples, read_frames,
 )
@@ -84,6 +85,15 @@ def test_reading_sigmf_and_frame_disjoint_splits(tmp_path: Path):
             assert len(recording) == len(assignments[('train', 'val', 'test').index(part)])
         loaded, _ = load_splits(tmp_path / 'outputs' / 'example', mode, 8, 4)
         assert sum(map(len, loaded.values())) == 8
+        summary = count_samples(tmp_path / 'outputs' / 'example', mode)
+        expected_frames = dict(zip(('train', 'validation', 'test'), map(len, assignments)))
+        assert summary['frames'] == {'cnn': expected_frames, 'mlp': expected_frames}
+        assert summary['samples'] == {
+            'cnn': {name: count * 9 for name, count in expected_frames.items()},
+            'mlp': {name: count * 8 for name, count in expected_frames.items()},
+        }
+        filtered = count_samples(tmp_path / 'outputs' / 'example', mode, recording='missing')
+        assert all(count == 0 for counts in filtered['samples'].values() for count in counts.values())
         data = root / 'train' / 'sample.sigmf-data'
         with data.open('r+b') as stream:
             stream.write(b'corrupt!')

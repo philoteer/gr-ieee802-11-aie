@@ -175,6 +175,11 @@ def snr_feature_q15(snr_ratio_x16: np.ndarray) -> np.ndarray:
     return output
 
 
+def snr_gate_candidates() -> list[int]:
+    return [0] + [int(round(32.0 * 10.0 ** (db / 10.0)))
+                  for db in np.arange(0.0, 40.5, 0.5)] + [2**64 - 1]
+
+
 def corpus_digest(corpus: ChannelCorpus) -> str:
     """Compute a stable SHA-256 digest over every corpus array.
 

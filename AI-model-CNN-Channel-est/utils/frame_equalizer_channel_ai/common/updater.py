@@ -91,8 +91,30 @@ def normalize(value: np.ndarray, shifts: np.ndarray) -> np.ndarray:
     return output
 
 
+def example_indices(symbol_count: int, reference_radius: int,
+                    min_reference_symbols: int, target_mode: str = 'averaged'):
+    if target_mode not in ('averaged', 'single_symbol'):
+        raise ValueError('unknown updater target mode')
+    pair_indices = usable_pair_indices(symbol_count, reference_radius, min_reference_symbols)
+    indices = pair_indices[pair_indices + 2 < symbol_count]
+    references = []
+    if target_mode == 'averaged':
+        retained = []
+        for index in indices:
+            current_index = index + 2
+            window = np.arange(max(0, current_index - reference_radius),
+                               min(symbol_count, current_index + reference_radius + 1))
+            window = window[(window < index) | (window > current_index)]
+            if len(window) >= min_reference_symbols:
+                retained.append(index)
+                references.append(window)
+        indices = np.asarray(retained, dtype=np.int32)
+    return pair_indices, indices, references
+
+
 def frame_examples(frame, cnn: QuantizedEstimator, reference_radius: int,
-                   min_reference_symbols: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+                   min_reference_symbols: int,
+                   target_mode: str = 'averaged') -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Builds MLP training examples from one decoded-symbol frame.
 
     The CNN estimate supplies a baseline channel. For each usable symbol pair
@@ -113,13 +135,15 @@ def frame_examples(frame, cnn: QuantizedEstimator, reference_radius: int,
         matching trailing dimensions are returned when the frame has no usable
         examples.
     """
+    if target_mode not in ('averaged', 'single_symbol'):
+        raise ValueError('unknown updater target mode')
     samples = frame.samples
     if samples is None or len(samples) < 3:
         return (np.empty((0, 4, INPUT_SIZE), dtype=np.int16),
                 np.empty((0, 4, 26), dtype=np.int16),
                 np.empty((0, 52, 2), dtype=np.int32), np.empty(0, dtype=np.uint64))
-    pair_indices = usable_pair_indices(len(samples), reference_radius, min_reference_symbols)
-    indices = pair_indices[pair_indices + 2 < len(samples)]
+    pair_indices, indices, references = example_indices(
+        len(samples), reference_radius, min_reference_symbols, target_mode)
     count = len(indices)
     if not count:
         return (np.empty((0, 4, INPUT_SIZE), dtype=np.int16),
@@ -135,7 +159,14 @@ def frame_examples(frame, cnn: QuantizedEstimator, reference_radius: int,
     current = channel[np.asarray(indices) + 2]
     pilot = np.rint(np.stack((current[:, np.searchsorted(OCCUPIED_BINS, PILOT_BINS)].real,
                                current[:, np.searchsorted(OCCUPIED_BINS, PILOT_BINS)].imag), axis=-1) * scale).astype(np.int32)
-    target_complex = current * scale
+    if target_mode == 'averaged':
+        reference = np.asarray([
+            np.sum(received[window] * np.conj(transmitted[window]), axis=0,
+                   dtype=np.complex128) / np.sum(np.abs(transmitted[window]) ** 2, axis=0)
+            for window in references])
+        target_complex = reference * scale
+    else:
+        target_complex = current * scale
     target = np.rint(np.stack((target_complex.real, target_complex.imag), axis=-1)).astype(np.int32)
     base = baseline[:, OCCUPIED_BINS]
     maximum = np.maximum(np.max(np.abs(base.astype(np.int64)), axis=(1, 2)),

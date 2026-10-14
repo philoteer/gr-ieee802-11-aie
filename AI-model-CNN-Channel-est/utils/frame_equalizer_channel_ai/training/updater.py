@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from utils.frame_equalizer_channel_ai.common.dataset import snr_gate_candidates
 from utils.frame_equalizer_channel_ai.common.updater import frame_examples, load_cnn_header, load_mlp_header
 from utils.frame_equalizer_channel_ai.dataset_generator.convert_sigmf import (
     DEFAULT_RECORDINGS,
@@ -125,7 +126,7 @@ def export_models(models, gate, cpu_gate, args):
     export_trained_updater(models, cpu_gate, args.cpu_header)
 
 
-def assemble(frames, cnn, radius, minimum):
+def assemble(frames, cnn, radius, minimum, target_mode='averaged'):
     """Concatenates nonempty per-frame examples into one training split.
 
     Args:
@@ -140,7 +141,7 @@ def assemble(frames, cnn, radius, minimum):
     Raises:
         ValueError: If no frame contributes usable examples.
     """
-    parts = [frame_examples(frame, cnn, radius, minimum) for frame in frames]
+    parts = [frame_examples(frame, cnn, radius, minimum, target_mode) for frame in frames]
     parts = [part for part in parts if len(part[0])]
     if not parts:
         raise ValueError("split has no data symbols following LTS substitutes")
@@ -190,7 +191,8 @@ def train(args):
     splits, skipped = load_splits(args.recordings, args.split_mode, args.reference_radius,
                                   args.min_reference_symbols, retain_samples=True)
     splits['validation'] = splits.pop('val')
-    data = {name: assemble(selected, cnn, args.reference_radius, args.min_reference_symbols)
+    data = {name: assemble(selected, cnn, args.reference_radius, args.min_reference_symbols,
+                           args.target_mode)
             for name, selected in splits.items()}
     models = []
     training_history = []
@@ -230,7 +232,7 @@ def train(args):
         training_history.append(history)
     weights = quantize(models)
     validation_prediction = infer(data['validation'][0], weights)
-    candidates = [0, 32, 160, 1600, 16000, 32000, 320000, 2**64 - 1]
+    candidates = snr_gate_candidates()
     gate = min(candidates, key=lambda value: score(data['validation'], validation_prediction, value)[0])
     float_validation = infer_float(data['validation'][0], models)
     cpu_gate = min(candidates, key=lambda value: score(data['validation'], float_validation, value)[0])
@@ -240,6 +242,7 @@ def train(args):
               'split_mode': args.split_mode, 'recordings': str(args.recordings / args.split_mode),
               'reference_radius': args.reference_radius,
               'min_reference_symbols': args.min_reference_symbols,
+              'target_mode': args.target_mode,
               'cnn_header_sha256': hashlib.sha256(args.cnn_header.read_bytes()).hexdigest(),
               'skipped': {name: dict(value) for name, value in skipped.items()},
               'frames': {name: len(value) for name, value in splits.items()},
@@ -281,6 +284,7 @@ def parser():
     result.add_argument('--export-checkpoint', type=Path)
     result.add_argument('--reference-radius', type=int, default=8)
     result.add_argument('--min-reference-symbols', type=int, default=4)
+    result.add_argument('--target-mode', choices=('averaged', 'single_symbol'), default='averaged')
     result.add_argument('--split-mode', choices=('by_frame', 'by_channel'), default='by_frame')
     result.add_argument('--seed', type=int, default=40)
     result.add_argument('--epochs', type=int, default=40)

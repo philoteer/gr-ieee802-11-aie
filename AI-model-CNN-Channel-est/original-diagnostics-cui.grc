@@ -93,6 +93,18 @@ blocks:
     coordinate: [528, 144.0]
     rotation: 0
     state: enabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: '"data/raw_capture/206.sigmf"'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [736, 36.0]
+    rotation: 0
+    state: enabled
 - name: freq
   id: variable
   parameters:
@@ -264,14 +276,14 @@ blocks:
     coordinate: [808, 1120.0]
     rotation: 180
     state: disabled
-- name: blocks_file_source_0_0
+- name: blocks_file_source_0
   id: blocks_file_source
   parameters:
     affinity: ''
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: data/raw_capture/stress_test.sigmf-data
+    file: file_path+"-data"
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -283,7 +295,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1240, 128.0]
+    coordinate: [1008, 140.0]
     rotation: 0
     state: enabled
 - name: blocks_interleaved_short_to_complex_0
@@ -301,7 +313,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1464, 152.0]
+    coordinate: [1232, 164.0]
     rotation: 0
     state: enabled
 - name: blocks_message_debug_0
@@ -482,6 +494,33 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [1104, 816.0]
+    rotation: 0
+    state: enabled
+- name: epy_block_iq_tag_sink
+  id: epy_block
+  parameters:
+    _source_code: "import numpy as np\nfrom gnuradio import gr\nimport pmt\n\n\nclass\
+      \ blk(gr.sync_block):\n    def __init__(self, frequency_callback=lambda value:\
+      \ None):\n        gr.sync_block.__init__(\n            self, name=\"IQ Tag Frequency\
+      \ Retuner\", in_sig=[np.complex64], out_sig=None)\n        self.frequency_callback\
+      \ = frequency_callback\n        self.frequency_key = pmt.intern(\"rx_freq\"\
+      )\n\n    def work(self, input_items, output_items):\n        count = len(input_items[0])\n\
+      \        for tag in self.get_tags_in_window(0, 0, count, self.frequency_key):\n\
+      \            self.frequency_callback(pmt.to_double(tag.value))\n        return\
+      \ count\n"
+    affinity: ''
+    alias: ''
+    comment: ''
+    frequency_callback: 'lambda value: self.set_freq(value)'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    _io_cache: ('IQ Tag Frequency Retuner', 'blk', [('frequency_callback', '<function
+      blk.<lambda> at 0x7e5009947c40>')], [('0', 'complex', 1)], [], '', ['frequency_callback'])
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [176, 788.0]
     rotation: 0
     state: enabled
 - name: epy_channel_estimator_diagnostic
@@ -726,7 +765,7 @@ blocks:
       [(''output_path'', "''data/tmp_out/channel_estimator_diagnostic.jsonl''"), (''max_records'',
       ''10000''), (''report_interval'', ''25''), (''headless_idle_seconds'', ''10.0''),
       (''estimator_label'', "''CNN''"), (''sample_rate'', ''20000000.0'')], [(''0'',
-      ''byte'', 1), (''diag'', ''message'', 1), (''crc_ok'', ''message'', 1)], [(''0'',
+      ''byte'', 1), (''crc_ok'', ''message'', 1), (''diag'', ''message'', 1)], [(''0'',
       ''float'', 53), (''1'', ''float'', 53), (''2'', ''float'', 64), (''3'', ''float'',
       1), (''4'', ''float'', 1), (''5'', ''float'', 1), (''6'', ''float'', 1), (''7'',
       ''float'', 1), (''8'', ''float'', 1), (''9'', ''float'', 1), (''10'', ''float'',
@@ -985,6 +1024,25 @@ blocks:
     coordinate: [440, 672.0]
     rotation: 0
     state: enabled
+- name: mlir_aie_sigmf_tag_injector_0
+  id: mlir_aie_sigmf_tag_injector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    metadata_file: file_path+"-meta"
+    minoutbuf: '0'
+    start_sample: '0'
+    tag_key: rx_freq
+    type: complex
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1416, 164.0]
+    rotation: 0
+    state: enabled
 - name: pdu_pdu_to_tagged_stream_0
   id: pdu_pdu_to_tagged_stream
   parameters:
@@ -1201,7 +1259,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1664, 160.0]
+    coordinate: [1648, 188.0]
     rotation: 0
     state: enabled
 - name: virtual_sink_1
@@ -1318,8 +1376,8 @@ connections:
 - [blocks_delay_0_0, '0', ieee802_11_sync_short_0, '0']
 - [blocks_divide_xx_0, '0', ieee802_11_sync_short_0, '2']
 - [blocks_divide_xx_0, '0', qtgui_time_sink_x_0, '0']
-- [blocks_file_source_0_0, '0', blocks_interleaved_short_to_complex_0, '0']
-- [blocks_interleaved_short_to_complex_0, '0', virtual_sink_0, '0']
+- [blocks_file_source_0, '0', blocks_interleaved_short_to_complex_0, '0']
+- [blocks_interleaved_short_to_complex_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
 - [blocks_moving_average_xx_0, '0', blocks_divide_xx_0, '1']
 - [blocks_moving_average_xx_1, '0', blocks_complex_to_mag_0, '0']
 - [blocks_moving_average_xx_1, '0', ieee802_11_sync_short_0, '1']
@@ -1350,10 +1408,12 @@ connections:
 - [ieee802_11_sync_long_0, '0', blocks_stream_to_vector_0, '0']
 - [ieee802_11_sync_short_0, '0', blocks_delay_0, '0']
 - [ieee802_11_sync_short_0, '0', ieee802_11_sync_long_0, '0']
+- [mlir_aie_sigmf_tag_injector_0, '0', virtual_sink_0, '0']
 - [pdu_pdu_to_tagged_stream_0, '0', qtgui_const_sink_x_0, '0']
 - [virtual_source_0, '0', blocks_complex_to_mag_squared_0, '0']
 - [virtual_source_0, '0', blocks_delay_0_0, '0']
 - [virtual_source_0, '0', blocks_multiply_xx_0, '0']
+- [virtual_source_0, '0', epy_block_iq_tag_sink, '0']
 - [virtual_source_0_0, '0', blocks_probe_rate_0, '0']
 - [virtual_source_1, '0', epy_channel_estimator_diagnostic, '0']
 - [virtual_source_1, '0', epy_evm_diagnostic, '0']

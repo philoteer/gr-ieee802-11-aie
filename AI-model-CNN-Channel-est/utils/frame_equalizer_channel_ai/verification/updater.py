@@ -30,6 +30,7 @@ def main():
     parser.add_argument('--checkpoint', type=Path, default=ROOT / 'utils/frame_equalizer_channel_ai/training/artifacts/channel_updater.pt')
     parser.add_argument('--reference-radius', type=int, default=8)
     parser.add_argument('--min-reference-symbols', type=int, default=4)
+    parser.add_argument('--target-mode', choices=('averaged', 'single_symbol'), default='averaged')
     arguments = parser.parse_args()
     cnn = load_cnn_header(arguments.cnn_header)
     weights, gate = load_mlp_header(arguments.header)
@@ -37,9 +38,11 @@ def main():
                                  arguments.reference_radius, arguments.min_reference_symbols,
                                  retain_samples=True)
     frames, skipped = splits[arguments.split], counts[arguments.split]
-    data = assemble(frames, cnn, arguments.reference_radius, arguments.min_reference_symbols)
+    data = assemble(frames, cnn, arguments.reference_radius, arguments.min_reference_symbols,
+                    arguments.target_mode)
     mse, baseline = score(data, infer(data[0], weights), gate)
     result = {'frames': len(frames), 'samples': len(data[0]), 'skipped': dict(skipped),
+                       'target_mode': arguments.target_mode,
                       'gate_snr_ratio_x16': gate, 'null_mse_q15': baseline,
                       'mlp_mse_q15': mse, 'relative_mse': mse / baseline}
     if arguments.checkpoint.is_file():

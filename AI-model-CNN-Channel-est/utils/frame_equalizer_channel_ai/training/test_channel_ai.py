@@ -25,6 +25,9 @@ from utils.frame_equalizer_channel_ai.verification import cli as verification
 from utils.frame_equalizer_channel_ai.training.exporter import export_float_updater, export_trained_cnn
 from utils.frame_equalizer_channel_ai.common.model import ChannelEstimator
 from utils.frame_equalizer_channel_ai.training import updater
+from utils.frame_equalizer_channel_ai.common import updater as updater_examples
+from utils.frame_equalizer_channel_ai.verification.compare_updater_targets import symbol_decisions
+from types import SimpleNamespace
 
 
 def _sample_corpus(samples: int) -> ChannelCorpus:
@@ -166,6 +169,25 @@ def test_noise_augmentation_is_reproducible_and_training_only():
         assert torch.equal(value, repeated.state_dict()[name])
 
 
+def test_fine_updater_gate_grid_resolves_intermediate_snr():
+    candidates = updater.snr_gate_candidates()
+    assert candidates == verification.snr_gate_candidates()
+    assert len(candidates) == 83
+    assert candidates[0] == 0 and candidates[-1] == 2**64 - 1
+    np.testing.assert_allclose(10 * np.log10(np.asarray(candidates[1:-1]) / 32),
+                               np.arange(0, 40.5, 0.5), atol=0.06)
+    labels = np.zeros((2, 4, 26), dtype=np.int16)
+    labels[0] = 100
+    prediction = np.full_like(labels, 100)
+    data = (None, labels, None, np.asarray([200, 500], dtype=np.uint64))
+    fine = min(candidates, key=lambda gate: updater.score(data, prediction, gate)[0])
+    coarse = min([0, 32, 160, 1600, 16000, 32000, 320000, 2**64 - 1],
+                 key=lambda gate: updater.score(data, prediction, gate)[0])
+    assert fine == 202
+    assert updater.score(data, prediction, fine)[0] == 0
+    assert updater.score(data, prediction, coarse)[0] > 0
+
+
 def test_augmentation_only_changes_lts_planes():
     inputs = torch.zeros((3, 6, 64))
     inputs[:, 4:] = 0.5
@@ -198,6 +220,72 @@ def test_updater_augmentation_preserves_snr_and_inputs():
     assert torch.count_nonzero(augmented[:, 52:60]) > 0
     assert torch.equal(augmented[:, 60], inputs[:, 60])
     assert torch.count_nonzero(inputs[:, :60]) == 0
+
+
+def test_averaged_updater_target_excludes_pair_and_current_pilots(monkeypatch):
+    transmitted = np.ones((12, 52), dtype=np.complex64)
+    received = transmitted.copy()
+    received[-1] = 3
+    samples = np.stack((received, transmitted), axis=-1)
+    pair_indices = updater_examples.usable_pair_indices(12, 3, 4)
+    baseline = np.zeros((len(pair_indices), 64, 2), dtype=np.int32)
+    baseline[:, OCCUPIED, 0] = 10000
+    monkeypatch.setattr(updater_examples, 'integer_estimate', lambda *args: baseline)
+    frame = SimpleNamespace(samples=samples, corpus=SimpleNamespace(
+        snr_ratio_x16=np.full(len(pair_indices), 1600, dtype=np.uint64)))
+    features, labels, _, _ = updater_examples.frame_examples(frame, None, 3, 4)
+    row = 4 - 1
+    assert np.count_nonzero(labels[row]) == 0
+    samples[4:7, :, 0] += 0.25j
+    changed_features, changed_labels, _, _ = updater_examples.frame_examples(frame, None, 3, 4)
+    np.testing.assert_array_equal(labels[row], changed_labels[row])
+    assert not np.array_equal(features[row, :, 52:60], changed_features[row, :, 52:60])
+
+
+def test_averaged_updater_target_uses_transmitted_symbol_power(monkeypatch):
+    transmitted = np.ones((12, 52), dtype=np.complex64)
+    transmitted[7] = 2
+    received = transmitted.copy()
+    received[7] = 4
+    received[-1] = 3
+    samples = np.stack((received, transmitted), axis=-1)
+    pair_indices = updater_examples.usable_pair_indices(12, 3, 4)
+    baseline = np.zeros((len(pair_indices), 64, 2), dtype=np.int32)
+    baseline[:, OCCUPIED, 0] = 10000
+    monkeypatch.setattr(updater_examples, 'integer_estimate', lambda *args: baseline)
+    frame = SimpleNamespace(samples=samples, corpus=SimpleNamespace(
+        snr_ratio_x16=np.full(len(pair_indices), 1600, dtype=np.uint64)))
+    _, labels, _, _ = updater_examples.frame_examples(frame, None, 3, 4)
+    np.testing.assert_array_equal(labels[3, :, 0::2], 11428)
+    np.testing.assert_array_equal(labels[3, :, 1::2], 0)
+    _, legacy, _, _ = updater_examples.frame_examples(frame, None, 3, 4, 'single_symbol')
+    assert np.count_nonzero(legacy[3]) == 0
+
+
+def test_updater_symbol_decision_comparison_counts_data_errors(monkeypatch):
+    transmitted = np.full((12, 52), (1 + 1j) / np.sqrt(2), dtype=np.complex64)
+    occupied_bins = np.flatnonzero(OCCUPIED)
+    transmitted[:, np.searchsorted(occupied_bins, updater_examples.PILOT_BINS)] = 1
+    received = transmitted.copy()
+    received[-1] *= 3
+    received[5, 0] *= -1
+    samples = np.stack((received, transmitted), axis=-1)
+    pairs = updater_examples.usable_pair_indices(12, 8, 4)
+    baseline = np.zeros((len(pairs), 64, 2), dtype=np.int32)
+    baseline[:, OCCUPIED, 0] = 10000
+    monkeypatch.setattr(updater_examples, 'integer_estimate', lambda *args: baseline)
+    frame = SimpleNamespace(samples=samples, corpus=SimpleNamespace(
+        snr_ratio_x16=np.full(len(pairs), 1600, dtype=np.uint64)))
+    models = [updater.Updater() for _ in range(4)]
+    for model in models:
+        for parameter in model.parameters():
+            parameter.data.zero_()
+    results = symbol_decisions([frame], None, {'averaged': models},
+                               {'averaged': {'gate_snr_ratio_x16': 16000}})
+    for result in results.values():
+        assert result['errors'] == 1
+        assert result['symbols'] == 480
+        assert result['ser'] == 1 / 480
 
 
 def test_float_updater_export_preserves_group_layout(tmp_path):
@@ -254,6 +342,9 @@ def test_updater_training_checkpoint_reexports_both_backends(tmp_path, monkeypat
     models, metadata = updater.load_checkpoint(args.checkpoint)
     assert len(models) == 4 and 'cpu_gate_snr_ratio_x16' in metadata
     assert metadata['noise_std'] == 0.02
+    expected_candidates = {str(gate) for gate in updater.snr_gate_candidates()}
+    assert set(metadata['validation_candidates']) == expected_candidates
+    assert set(metadata['float_validation_candidates']) == expected_candidates
     updater.train(args)
     repeated_models, repeated_metadata = updater.load_checkpoint(args.checkpoint)
     for model, repeated in zip(models, repeated_models):

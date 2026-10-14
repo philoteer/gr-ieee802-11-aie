@@ -14,7 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from utils.frame_equalizer_channel_ai.common.corpora import DEFAULT_DATASET_DIRECTORY, load_corpus
-from utils.frame_equalizer_channel_ai.common.dataset import ChannelCorpus, OCCUPIED, corpus_digest
+from utils.frame_equalizer_channel_ai.common.dataset import ChannelCorpus, OCCUPIED, corpus_digest, snr_gate_candidates
 from utils.frame_equalizer_channel_ai.common.quantized import QuantizedEstimator
 from utils.frame_equalizer_channel_ai.verification.quantized import integer_estimate, load_npz
 
@@ -42,9 +42,7 @@ def select_estimate_gate(cnn: np.ndarray, corpus: ChannelCorpus) -> tuple[int, d
     actual = corpus.truth[:, OCCUPIED].astype(np.float64)
     cnn_mse = np.mean((cnn[:, OCCUPIED].astype(np.float64) - actual) ** 2, axis=(1, 2))
     ls_mse = np.mean((corpus.ls[:, OCCUPIED].astype(np.float64) - actual) ** 2, axis=(1, 2))
-    candidates = [0] + [int(round(32.0 * 10.0 ** (db / 10.0)))
-                  for db in np.arange(0.0, 40.5, 0.5)]
-    candidates.append(np.iinfo(np.uint64).max)
+    candidates = snr_gate_candidates()
     best_threshold = candidates[-1]
     best_metrics = metrics(cnn, corpus.truth)
     best_score = float(np.mean(cnn_mse))

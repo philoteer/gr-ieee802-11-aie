@@ -34,33 +34,15 @@ options:
 
 blocks:
 - name: chan_est
-  id: variable_qtgui_chooser
+  id: variable
   parameters:
-    comment: ''
-    gui_hint: ''
-    label: ''
-    label0: ''
-    label1: ''
-    label2: ''
-    label3: ''
-    label4: ''
-    labels: '["LS", "LMS", "Linear Comb", "STA"]'
-    num_opts: '0'
-    option0: '0'
-    option1: '1'
-    option2: '2'
-    option3: '3'
-    option4: '4'
-    options: '[0, 1, 2, 3]'
-    orient: Qt.QHBoxLayout
-    type: int
+    comment: Label the selected GNU Radio channel estimator in diagnostic records.
     value: '0'
-    widget: radio_buttons
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [160, 16.0]
+    coordinate: [168, 20.0]
     rotation: 0
     state: enabled
 - name: diagnostic_estimator
@@ -111,65 +93,28 @@ blocks:
     coordinate: [528, 144.0]
     rotation: 0
     state: enabled
-- name: freq
-  id: variable_qtgui_chooser
+- name: file_path
+  id: variable
   parameters:
     comment: ''
-    gui_hint: ''
-    label: ''
-    label0: ''
-    label1: ''
-    label2: ''
-    label3: ''
-    label4: ''
-    labels: '[''  1 | 2412.0 | 11g'', ''  2 | 2417.0 | 11g'', ''  3 | 2422.0 | 11g'',
-      ''  4 | 2427.0 | 11g'', ''  5 | 2432.0 | 11g'', ''  6 | 2437.0 | 11g'', ''  7
-      | 2442.0 | 11g'', ''  8 | 2447.0 | 11g'', ''  9 | 2452.0 | 11g'', '' 10 | 2457.0
-      | 11g'', '' 11 | 2462.0 | 11g'', '' 12 | 2467.0 | 11g'', '' 13 | 2472.0 | 11g'',
-      '' 14 | 2484.0 | 11g'', '' 34 | 5170.0 | 11a'', '' 36 | 5180.0 | 11a'', '' 38
-      | 5190.0 | 11a'', '' 40 | 5200.0 | 11a'', '' 42 | 5210.0 | 11a'', '' 44 | 5220.0
-      | 11a'', '' 46 | 5230.0 | 11a'', '' 48 | 5240.0 | 11a'', '' 50 | 5250.0 | 11a'',
-      '' 52 | 5260.0 | 11a'', '' 54 | 5270.0 | 11a'', '' 56 | 5280.0 | 11a'', '' 58
-      | 5290.0 | 11a'', '' 60 | 5300.0 | 11a'', '' 62 | 5310.0 | 11a'', '' 64 | 5320.0
-      | 11a'', ''100 | 5500.0 | 11a'', ''102 | 5510.0 | 11a'', ''104 | 5520.0 | 11a'',
-      ''106 | 5530.0 | 11a'', ''108 | 5540.0 | 11a'', ''110 | 5550.0 | 11a'', ''112
-      | 5560.0 | 11a'', ''114 | 5570.0 | 11a'', ''116 | 5580.0 | 11a'', ''118 | 5590.0
-      | 11a'', ''120 | 5600.0 | 11a'', ''122 | 5610.0 | 11a'', ''124 | 5620.0 | 11a'',
-      ''126 | 5630.0 | 11a'', ''128 | 5640.0 | 11a'', ''132 | 5660.0 | 11a'', ''134
-      | 5670.0 | 11a'', ''136 | 5680.0 | 11a'', ''138 | 5690.0 | 11a'', ''140 | 5700.0
-      | 11a'', ''142 | 5710.0 | 11a'', ''144 | 5720.0 | 11a'', ''149 | 5745.0 | 11a
-      (SRD)'', ''151 | 5755.0 | 11a (SRD)'', ''153 | 5765.0 | 11a (SRD)'', ''155 |
-      5775.0 | 11a (SRD)'', ''157 | 5785.0 | 11a (SRD)'', ''159 | 5795.0 | 11a (SRD)'',
-      ''161 | 5805.0 | 11a (SRD)'', ''165 | 5825.0 | 11a (SRD)'', ''172 | 5860.0 |
-      11p'', ''174 | 5870.0 | 11p'', ''176 | 5880.0 | 11p'', ''178 | 5890.0 | 11p'',
-      ''180 | 5900.0 | 11p'', ''182 | 5910.0 | 11p'', ''184 | 5920.0 | 11p'']'
-    num_opts: '0'
-    option0: '0'
-    option1: '1'
-    option2: '2'
-    option3: '3'
-    option4: '4'
-    options: '[2412000000.0, 2417000000.0, 2422000000.0, 2427000000.0, 2432000000.0,
-      2437000000.0, 2442000000.0, 2447000000.0, 2452000000.0, 2457000000.0, 2462000000.0,
-      2467000000.0, 2472000000.0, 2484000000.0, 5170000000.0, 5180000000.0, 5190000000.0,
-      5200000000.0, 5210000000.0, 5220000000.0, 5230000000.0, 5240000000.0, 5250000000.0,
-      5260000000.0, 5270000000.0, 5280000000.0, 5290000000.0, 5300000000.0, 5310000000.0,
-      5320000000.0, 5500000000.0, 5510000000.0, 5520000000.0, 5530000000.0, 5540000000.0,
-      5550000000.0, 5560000000.0, 5570000000.0, 5580000000.0, 5590000000.0, 5600000000.0,
-      5610000000.0, 5620000000.0, 5630000000.0, 5640000000.0, 5660000000.0, 5670000000.0,
-      5680000000.0, 5690000000.0, 5700000000.0, 5710000000.0, 5720000000.0, 5745000000.0,
-      5755000000.0, 5765000000.0, 5775000000.0, 5785000000.0, 5795000000.0, 5805000000.0,
-      5825000000.0, 5860000000.0, 5870000000.0, 5880000000.0, 5890000000.0, 5900000000.0,
-      5910000000.0, 5920000000.0]'
-    orient: Qt.QVBoxLayout
-    type: real
-    value: '2417000000.0'
-    widget: combo_box
+    value: '"data/raw_capture/206.sigmf"'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [640, 16.0]
+    coordinate: [952, 36.0]
+    rotation: 0
+    state: enabled
+- name: freq
+  id: variable
+  parameters:
+    comment: ''
+    value: '2417000000.0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [384, 28.0]
     rotation: 0
     state: enabled
 - name: samp_rate
@@ -331,14 +276,14 @@ blocks:
     coordinate: [808, 1120.0]
     rotation: 180
     state: disabled
-- name: blocks_file_source_0_0
+- name: blocks_file_source_0
   id: blocks_file_source
   parameters:
     affinity: ''
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: data/raw_capture/stress_test.sigmf-data
+    file: file_path+"-data"
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -350,10 +295,10 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1248, 128.0]
+    coordinate: [1000, 140.0]
     rotation: 0
     state: enabled
-- name: blocks_interleaved_short_to_complex_0
+- name: blocks_interleaved_short_to_complex_0_0
   id: blocks_interleaved_short_to_complex
   parameters:
     affinity: ''
@@ -368,7 +313,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1472, 152.0]
+    coordinate: [1224, 180.0]
     rotation: 0
     state: enabled
 - name: blocks_message_debug_0
@@ -498,6 +443,33 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [1104, 816.0]
+    rotation: 0
+    state: enabled
+- name: epy_block_iq_tag_sink
+  id: epy_block
+  parameters:
+    _source_code: "import numpy as np\nfrom gnuradio import gr\nimport pmt\n\n\nclass\
+      \ blk(gr.sync_block):\n    def __init__(self, frequency_callback=lambda value:\
+      \ None):\n        gr.sync_block.__init__(\n            self, name=\"IQ Tag Frequency\
+      \ Retuner\", in_sig=[np.complex64], out_sig=None)\n        self.frequency_callback\
+      \ = frequency_callback\n        self.frequency_key = pmt.intern(\"rx_freq\"\
+      )\n\n    def work(self, input_items, output_items):\n        count = len(input_items[0])\n\
+      \        for tag in self.get_tags_in_window(0, 0, count, self.frequency_key):\n\
+      \            self.frequency_callback(pmt.to_double(tag.value))\n        return\
+      \ count\n"
+    affinity: ''
+    alias: ''
+    comment: ''
+    frequency_callback: 'lambda value: self.set_freq(value)'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    _io_cache: ('IQ Tag Frequency Retuner', 'blk', [('frequency_callback', '<function
+      blk.<lambda> at 0x7e5009945760>')], [('0', 'complex', 1)], [], '', ['frequency_callback'])
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [192, 820.0]
     rotation: 0
     state: enabled
 - name: epy_channel_estimator_diagnostic
@@ -742,7 +714,7 @@ blocks:
       [(''output_path'', "''data/tmp_out/channel_estimator_diagnostic.jsonl''"), (''max_records'',
       ''10000''), (''report_interval'', ''25''), (''headless_idle_seconds'', ''10.0''),
       (''estimator_label'', "''CNN''"), (''sample_rate'', ''20000000.0'')], [(''0'',
-      ''byte'', 1), (''diag'', ''message'', 1), (''crc_ok'', ''message'', 1)], [(''0'',
+      ''byte'', 1), (''crc_ok'', ''message'', 1), (''diag'', ''message'', 1)], [(''0'',
       ''float'', 53), (''1'', ''float'', 53), (''2'', ''float'', 64), (''3'', ''float'',
       1), (''4'', ''float'', 1), (''5'', ''float'', 1), (''6'', ''float'', 1), (''7'',
       ''float'', 1), (''8'', ''float'', 1), (''9'', ''float'', 1), (''10'', ''float'',
@@ -999,6 +971,25 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [440, 672.0]
+    rotation: 0
+    state: enabled
+- name: mlir_aie_sigmf_tag_injector_0
+  id: mlir_aie_sigmf_tag_injector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    metadata_file: file_path+"-meta"
+    minoutbuf: '0'
+    start_sample: '0'
+    tag_key: rx_freq
+    type: complex
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1400, 180.0]
     rotation: 0
     state: enabled
 - name: pdu_pdu_to_tagged_stream_0
@@ -1492,7 +1483,7 @@ blocks:
     coordinate: [1024, 1604.0]
     rotation: 0
     state: enabled
-- name: virtual_sink_0
+- name: virtual_sink_0_0
   id: virtual_sink
   parameters:
     alias: ''
@@ -1502,7 +1493,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1664, 160.0]
+    coordinate: [1640, 204.0]
     rotation: 0
     state: enabled
 - name: virtual_sink_1
@@ -1619,8 +1610,8 @@ connections:
 - [blocks_delay_0_0, '0', ieee802_11_sync_short_0, '0']
 - [blocks_divide_xx_0, '0', ieee802_11_sync_short_0, '2']
 - [blocks_divide_xx_0, '0', qtgui_time_sink_x_0, '0']
-- [blocks_file_source_0_0, '0', blocks_interleaved_short_to_complex_0, '0']
-- [blocks_interleaved_short_to_complex_0, '0', virtual_sink_0, '0']
+- [blocks_file_source_0, '0', blocks_interleaved_short_to_complex_0_0, '0']
+- [blocks_interleaved_short_to_complex_0_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
 - [blocks_moving_average_xx_0, '0', blocks_divide_xx_0, '1']
 - [blocks_moving_average_xx_1, '0', blocks_complex_to_mag_0, '0']
 - [blocks_moving_average_xx_1, '0', ieee802_11_sync_short_0, '1']
@@ -1651,10 +1642,12 @@ connections:
 - [ieee802_11_sync_long_0, '0', blocks_stream_to_vector_0, '0']
 - [ieee802_11_sync_short_0, '0', blocks_delay_0, '0']
 - [ieee802_11_sync_short_0, '0', ieee802_11_sync_long_0, '0']
+- [mlir_aie_sigmf_tag_injector_0, '0', virtual_sink_0_0, '0']
 - [pdu_pdu_to_tagged_stream_0, '0', qtgui_const_sink_x_0, '0']
 - [virtual_source_0, '0', blocks_complex_to_mag_squared_0, '0']
 - [virtual_source_0, '0', blocks_delay_0_0, '0']
 - [virtual_source_0, '0', blocks_multiply_xx_0, '0']
+- [virtual_source_0, '0', epy_block_iq_tag_sink, '0']
 - [virtual_source_0_0, '0', blocks_probe_rate_0, '0']
 - [virtual_source_1, '0', epy_channel_estimator_diagnostic, '0']
 - [virtual_source_1, '0', epy_evm_diagnostic, '0']
