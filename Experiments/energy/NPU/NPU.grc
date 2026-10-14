@@ -6,7 +6,7 @@ options:
     cmake_opt: ''
     comment: ''
     copyright: ''
-    description: ''
+    description: NPU PHY energy measurement on the shared 20 MHz stress-test capture.
     gen_cmake: 'On'
     gen_linking: dynamic
     generate_options: no_gui
@@ -22,7 +22,7 @@ options:
     run_options: run
     sizing_mode: fixed
     thread_safe_setters: ''
-    title: ''
+    title: NPU Energy Experiment
     window_size: (1000,1000)
   states:
     bus_sink: false
@@ -36,8 +36,8 @@ blocks:
 - name: data_dir
   id: variable
   parameters:
-    comment: Dataset paths are relative to the generated script in Experiments/energy/gr-ieee802-11.
-    value: str(__import__("pathlib").Path(globals().get("__file__", "Experiments/energy/gr-ieee802-11/wifi_rx.py")).resolve().parents[3]
+    comment: Dataset paths are relative to the generated script in Experiments/energy/NPU.
+    value: str(__import__("pathlib").Path(globals().get("__file__", "Experiments/energy/NPU/wifi_rx.py")).resolve().parents[3]
       / "AI-model-CNN-Channel-est" / "data")
   states:
     bus_sink: false
@@ -50,12 +50,24 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '"data/raw_capture/206.sigmf"'
+    value: data_dir + "/raw_capture/stress_test.sigmf"
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate: [728, 12.0]
+    rotation: 0
+    state: enabled
+- name: kernel_dir
+  id: variable
+  parameters:
+    comment: Build artifacts for the base 16-tile, 16384-sample NPU PHY.
+    value: str(__import__("pathlib").Path(data_dir).parents[1] / "base" / "kernel" / "build")
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [728, 156.0]
     rotation: 0
     state: enabled
 - name: freq
@@ -113,7 +125,7 @@ blocks:
     alias: ''
     append: 'False'
     comment: ''
-    file: data/tmp_out/replaced.pcap
+    file: data_dir + "/tmp_out/npu.pcap"
     type: byte
     unbuffered: 'True'
     vlen: '1'
@@ -327,8 +339,8 @@ blocks:
     maxoutbuf: '0'
     minoutbuf: '0'
     nominal_frequency: freq
-    path_insts_bin: '"kernel/build/insts.bin"'
-    path_xclbin: '"kernel/build/final.xclbin"'
+    path_insts_bin: kernel_dir + "/insts.bin"
+    path_xclbin: kernel_dir + "/final.xclbin"
   states:
     _io_cache: ('mlir_aie_python_80211_phy', 'mlir_aie_python_80211_phy', [('path_xclbin',
       "'kernel/build/final.xclbin'"), ('path_insts_bin', "'kernel/build/insts.bin'"),
@@ -483,7 +495,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: Logs through top_block.wait(); paired with energy_logger_finish snippet.
-    csv_path: data_dir + "/tmp_out/original_energy.csv"
+    csv_path: data_dir + "/tmp_out/npu_energy.csv"
     interval: '0.5'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -532,7 +544,7 @@ blocks:
     alias: ''
     comment: ''
     debug: 'False'
-    log: 'True'
+    log: 'False'
     maxoutbuf: '0'
     minoutbuf: '0'
   states:
@@ -588,8 +600,8 @@ blocks:
     minoutbuf: '0'
     nominal_frequency: freq
     num_slots: '2'
-    path_insts_bin: ../../../base/kernel/build/insts.bin
-    path_xclbin: ../../../base/kernel/build/final.xclbin
+    path_insts_bin: kernel_dir + "/insts.bin"
+    path_xclbin: kernel_dir + "/final.xclbin"
     weights_path: ''''''
   states:
     bus_sink: false

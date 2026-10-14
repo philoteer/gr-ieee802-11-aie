@@ -55,7 +55,7 @@ def main():
         parser.exit(1, f"Cannot summarize {args.csv}: {error}\n")
     seconds = result["duration_s"]
     print(f"CSV: {args.csv}")
-    print(f"Run: {'complete' if result['complete'] else 'partial (no end reading)'}; "
+    print(f"Recording: {'finalized' if result['complete'] else 'partial (no end reading)'}; "
           f"{result['readings']} readings")
     print(f"Elapsed: {seconds:.3f} s")
     print(f"Processed: {result['samples']:,} complex IQ samples")

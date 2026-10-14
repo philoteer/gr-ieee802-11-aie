@@ -6,7 +6,7 @@ options:
     cmake_opt: ''
     comment: ''
     copyright: ''
-    description: ''
+    description: GR-WiFi energy measurement on the shared 20 MHz stress-test capture.
     gen_cmake: 'On'
     gen_linking: dynamic
     generate_options: no_gui
@@ -22,7 +22,7 @@ options:
     run_options: run
     sizing_mode: fixed
     thread_safe_setters: ''
-    title: Not titled yet
+    title: GR-WiFi Energy Experiment
     window_size: (1000,1000)
   states:
     bus_sink: false
@@ -36,8 +36,8 @@ blocks:
 - name: data_dir
   id: variable
   parameters:
-    comment: Dataset paths are relative to the generated script in Experiments/energy/gr-ieee802-11.
-    value: str(__import__("pathlib").Path(globals().get("__file__", "Experiments/energy/gr-ieee802-11/wifi_rx.py")).resolve().parents[3]
+    comment: Dataset paths are relative to the generated script in Experiments/energy/gr-ieee80211.
+    value: str(__import__("pathlib").Path(globals().get("__file__", "Experiments/energy/gr-ieee80211/wifi_rx.py")).resolve().parents[3]
       / "AI-model-CNN-Channel-est" / "data")
   states:
     bus_sink: false
@@ -50,7 +50,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '"data/raw_capture/206.sigmf"'
+    value: data_dir + "/raw_capture/stress_test.sigmf"
   states:
     bus_sink: false
     bus_source: false
@@ -135,7 +135,7 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: /home/piloteer/xdna_phy/gr-ieee-802-11-aie/stage43_v2/data/raw_capture/wifi_iq_hackrf.bin
+    file: data_dir + "/raw_capture/wifi_iq_hackrf.bin"
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -377,7 +377,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: Logs through top_block.wait(); paired with energy_logger_finish snippet.
-    csv_path: data_dir + "/tmp_out/original_energy.csv"
+    csv_path: data_dir + "/tmp_out/gr_ieee80211_energy.csv"
     interval: '0.5'
     maxoutbuf: '0'
     minoutbuf: '0'
