@@ -58,18 +58,6 @@ blocks:
     coordinate: [728, 12.0]
     rotation: 0
     state: enabled
-- name: kernel_dir
-  id: variable
-  parameters:
-    comment: Build artifacts for the base 16-tile, 16384-sample NPU PHY.
-    value: str(__import__("pathlib").Path(data_dir).parents[1] / "base" / "kernel" / "build")
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [728, 156.0]
-    rotation: 0
-    state: enabled
 - name: freq
   id: variable
   parameters:
@@ -82,6 +70,32 @@ blocks:
     coordinate: [192, 16.0]
     rotation: 0
     state: enabled
+- name: kernel_dir
+  id: variable
+  parameters:
+    comment: Build artifacts for the base 16-tile, 16384-sample NPU PHY.
+    value: str(__import__("pathlib").Path(data_dir).parents[1] / "base" / "kernel"
+      / "build")
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1112, 228.0]
+    rotation: 0
+    state: enabled
+- name: kernel_dir
+  id: variable
+  parameters:
+    comment: Build artifacts for the base 16-tile, 16384-sample NPU PHY.
+    value: str(__import__("pathlib").Path(data_dir).parents[1] / "AI-model-CNN-Channel-est"
+      / "kernel" / "build")
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1104, 316.0]
+    rotation: 0
+    state: disabled
 - name: samp_rate
   id: variable
   parameters:
