@@ -18,7 +18,8 @@ options:
     qt_qss_theme: ''
     realtime_scheduling: ''
     run: 'True'
-    run_command: '{python} -u {filename}'
+    run_command: >-
+      bash -c 'export LD_LIBRARY_PATH="$(dirname "$2")/../../../../gr-foo-fixed/build/lib${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}"; exec "$1" -u "$2"' -- {python} {filename}
     run_options: run
     sizing_mode: fixed
     thread_safe_setters: ''
