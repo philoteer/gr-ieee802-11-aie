@@ -380,13 +380,33 @@ blocks:
 - name: epy_block_latency
   id: epy_block
   parameters:
-    _source_code: "import json\nimport threading\nimport time\n\nimport numpy as np\n\
-      import pmt\nfrom gnuradio import gr\n\n\nclass blk(gr.sync_block):\n    \"\"\
-       \"Match input boundary tags to CRC-valid decoded MAC payloads.\n\n    IQ passes through unchanged. Input timestamps are retained outside the\n    stream so synchronization and equalization may discard latency tags.\n    Completion is measured at decoded-PDU handler entry, including message\n    delivery delay. All timestamps use the host monotonic clock.\n\n    Attributes:\n        by_payload (dict): Payload bytes mapped to frame label and MAC sequence.\n        frames (dict): Frame labels mapped to start, end, and done timestamps\n            in nanoseconds, plus a reported flag once a latency is printed.\n        lock (threading.Lock): Protects frame state and counters across callbacks.\n        count (int): Number of frames with a printed latency measurement.\n        total_ms (float): Sum of reported start-to-decoded latencies.\n        unmatched (int): Decoded packets without a matching payload/sequence pair.\n        duplicates (int): Additional decoded packets for an already seen frame.\n    \"\"\"\n\n   \
-       \ def __init__(self, metadata_file=\"../wifi_latency.sigmf-meta\"):\n        \"\"\"Load expected frame identities and register the decoded-PDU input.\n\n        Args:\n            metadata_file (str): SigMF metadata path. Wi-Fi annotations must\n                contain unique labels and ASCII payloads, with payload_ascii\n                and mac_sequence_number fields in their JSON core:comment.\n\n        Raises:\n            OSError: If the metadata file cannot be read.\n            ValueError: If JSON is invalid, no latency frames are present, or\n                frame labels or payloads are ambiguous.\n            KeyError: If a required annotation identity field is missing.\n        \"\"\"\n      \
-      \  gr.sync_block.__init__(self, name=\"PHY latency (payload match)\",\n    \
-      \                           in_sig=[np.complex64], out_sig=[np.complex64])\n\
-      \        with open(metadata_file) as stream:\n            metadata = json.load(stream)\n\
+    _source_code: "import json\nimport threading\nimport time\n\nimport pmt\nfrom\
+      \ gnuradio import gr\n\n\nclass blk(gr.basic_block):\n    \"\"\"Match native\
+      \ input and decoder timestamps without processing IQ.\n\n    Boundary messages\
+      \ preserve the source's timestamp_ns. Completion uses\n    phy_completed_ns\
+      \ from the local C++ decoder, before PDU publication.\n    Python delivery,\
+      \ matching, and printing delays are excluded from the\n    reported interval.\
+      \ All timestamps use the host monotonic clock.\n\n    Attributes:\n        by_payload\
+      \ (dict): Payload bytes mapped to frame label and MAC sequence.\n        frames\
+      \ (dict): Frame labels mapped to native start, end, and done\n            timestamps\
+      \ in nanoseconds, plus delivery time and a reported flag.\n        lock (threading.Lock):\
+      \ Protects frame state and counters across callbacks.\n        count (int):\
+      \ Number of frames with a printed latency measurement.\n        total_ms (float):\
+      \ Sum of reported start-to-decoded latencies.\n        unmatched (int): Decoded\
+      \ packets without a matching payload/sequence pair.\n        duplicates (int):\
+      \ Additional decoded packets for an already seen frame.\n    \"\"\"\n\n    def\
+      \ __init__(self, metadata_file=\"../wifi_latency.sigmf-meta\"):\n        \"\"\
+      \"Load expected frame identities and register the decoded-PDU input.\n\n   \
+      \     Args:\n            metadata_file (str): SigMF metadata path. Wi-Fi annotations\
+      \ must\n                contain unique labels and ASCII payloads, with payload_ascii\n\
+      \                and mac_sequence_number fields in their JSON core:comment.\n\
+      \n        Raises:\n            OSError: If the metadata file cannot be read.\n\
+      \            ValueError: If JSON is invalid, no latency frames are present,\
+      \ or\n                frame labels or payloads are ambiguous.\n            KeyError:\
+      \ If a required annotation identity field is missing.\n        \"\"\"\n    \
+      \    gr.basic_block.__init__(self, name=\"PHY latency (native timestamps)\"\
+      ,\n                                in_sig=None, out_sig=None)\n        with\
+      \ open(metadata_file) as stream:\n            metadata = json.load(stream)\n\
       \        self.by_payload = {}\n        self.frames = {}\n        for annotation\
       \ in metadata.get(\"annotations\", []):\n            label = annotation.get(\"\
       core:label\", \"\")\n            if not label.startswith(\"wifi-frame-\"):\n\
@@ -400,59 +420,98 @@ blocks:
       \    self.lock = threading.Lock()\n        self.count = 0\n        self.total_ms\
       \ = 0.0\n        self.unmatched = 0\n        self.duplicates = 0\n        self.message_port_register_in(pmt.intern(\"\
       decoded\"))\n        self.set_msg_handler(pmt.intern(\"decoded\"), self.handle_decoded)\n\
-       \n    def work(self, input_items, output_items):\n        \"\"\"Collect input boundary timestamps and forward the IQ buffer.\n\n        Args:\n            input_items (list): GNU Radio input buffers; port 0 is complex64 IQ.\n            output_items (list): Writable complex64 output buffer on port 0.\n\n        Returns:\n            int: Number of samples consumed and produced.\n        \"\"\"\n        count = len(input_items[0])\n\
-      \        # Read tags inline, before releasing these samples to the receiver.\n\
-      \        # Keep timestamps out-of-band; sync/equalizer blocks may drop tags.\n\
-      \        with self.lock:\n            for tag in self.get_tags_in_window(0,\
-      \ 0, count):\n                if not any(pmt.eq(tag.key, pmt.intern(k)) for\
-      \ k in (\"frame_start\", \"frame_end\")):\n                    continue\n  \
-      \              if not pmt.is_dict(tag.value):\n                    continue\n\
-      \                label = pmt.dict_ref(tag.value, pmt.intern(\"frame_id\"), pmt.PMT_NIL)\n\
-      \                stamp = pmt.dict_ref(tag.value, pmt.intern(\"timestamp_ns\"\
-      ), pmt.PMT_NIL)\n                if not pmt.is_symbol(label) or not pmt.is_uint64(stamp):\n\
-      \                    continue\n                label = pmt.symbol_to_string(label)\n\
-      \                if label in self.frames:\n                    event = \"start\"\
-      \ if pmt.eq(tag.key, pmt.intern(\"frame_start\")) else \"end\"\n           \
-      \         self.frames[label].setdefault(event, pmt.to_uint64(stamp))\n     \
-      \               self.report(label)\n        output_items[0][:count] = input_items[0][:count]\n\
-       \        return count\n\n    def handle_decoded(self, message):\n        \"\"\"Match a CRC-valid decoded MAC PDU and retain its completion time.\n\n        The decoder removes the FCS. Matching assumes a 24-byte MAC header:\n        bytes 22:24 hold sequence control and bytes 24 onward are the payload.\n        Exact payload and sequence matching avoids shifting identities after\n        a lost or reordered packet. The first completion wins for duplicates.\n\n        Args:\n            message (pmt.pmt_t): Decoder PDU containing metadata and MAC bytes\n                as a blob or u8vector. Malformed message envelopes are ignored.\n        \"\"\"\n        # Timestamp\
-      \ at handler entry, before matching/printing/locking.\n        completed = time.monotonic_ns()\n\
-      \        if not pmt.is_pair(message):\n            return\n        data = pmt.cdr(message)\n\
-      \        if not (pmt.is_blob(data) or pmt.is_u8vector(data)):\n            return\n\
-      \        mac = bytes(pmt.to_python(data))\n        match = self.by_payload.get(mac[24:])\
-      \ if len(mac) >= 24 else None\n        with self.lock:\n            if match\
-      \ is None or int.from_bytes(mac[22:24], \"little\") >> 4 != match[1]:\n    \
-      \            self.unmatched += 1\n                return\n            label\
-      \ = match[0]\n            frame = self.frames[label]\n            if \"done\"\
-      \ in frame:\n                self.duplicates += 1\n                return\n\
-      \            frame[\"done\"] = completed\n            self.report(label)\n\n\
-       \    def report(self, label):\n        \"\"\"Print one latency sample when both boundaries and completion exist.\n\n        The caller must hold self.lock. Completion may be observed before the\n        annotation's final windowing-tail tag; reporting waits for all three\n        timestamps without changing the original completion time. The tail\n        latency can be negative if decoding precedes the end-tag timestamp.\n\n        Args:\n            label (str): Known frame label identifying the retained timestamps.\n        \"\"\"\n        # Called with lock held. Output delivery\
-      \ can precede the annotation's\n        # final windowing-tail tag, so retain\
-      \ completion until both tags exist.\n        frame = self.frames[label]\n  \
-      \      if frame.get(\"reported\") or not all(k in frame for k in (\"start\"\
-      , \"end\", \"done\")):\n            return\n        elapsed_ms = (frame[\"done\"\
-      ] - frame[\"start\"]) / 1e6\n        tail_ms = (frame[\"done\"] - frame[\"end\"\
-      ]) / 1e6\n        frame[\"reported\"] = True\n        self.count += 1\n    \
-      \    self.total_ms += elapsed_ms\n        print(f\"[PHY latency estimate] {label}:\
-      \ \"\n              f\"start-to-decoded={elapsed_ms:.4f} ms, \"\n          \
-      \    f\"end-to-decoded={tail_ms:.4f} ms, \"\n              f\"mean={self.total_ms\
-      \ / self.count:.4f} ms (n={self.count})\",\n              flush=True)\n\n  \
-       \  def finish(self):\n        \"\"\"Print matching counters and missing frame IDs after workers finish.\n\n        Call after top_block.wait() so input-tag collection and decoded-PDU\n        handling have finished before the final summary is calculated.\n        \"\"\"\n        with self.lock:\n            missing = [label\
-      \ for label, frame in self.frames.items() if not frame.get(\"reported\")]\n\
-      \            print(f\"[PHY latency summary] matched={self.count}/{len(self.frames)},\
-      \ \"\n                  f\"unmatched-output={self.unmatched}, duplicate-output={self.duplicates}\"\
-      , flush=True)\n            if missing:\n                print(\"[PHY latency\
-      \ summary] missing: \" + \", \".join(missing), flush=True)\n"
+      \        self.message_port_register_in(pmt.intern(\"boundaries\"))\n       \
+      \ self.set_msg_handler(pmt.intern(\"boundaries\"), self.handle_boundary)\n\n\
+      \    def handle_boundary(self, message):\n        \"\"\"Retain a native ingress\
+      \ timestamp received from the tag-monitor tap.\n\n        Args:\n          \
+      \  message (pmt.pmt_t): Pair of frame_start/frame_end and an annotation\n  \
+      \              dictionary containing frame_id and timestamp_ns. Malformed or\n\
+      \                unknown events are ignored. Arrival time is never substituted.\n\
+      \        \"\"\"\n        if not pmt.is_pair(message):\n            return\n\
+      \        key, value = pmt.car(message), pmt.cdr(message)\n        if not pmt.is_dict(value):\n\
+      \            return\n        if pmt.eq(key, pmt.intern(\"frame_start\")):\n\
+      \            event = \"start\"\n        elif pmt.eq(key, pmt.intern(\"frame_end\"\
+      )):\n            event = \"end\"\n        else:\n            return\n      \
+      \  label = pmt.dict_ref(value, pmt.intern(\"frame_id\"), pmt.PMT_NIL)\n    \
+      \    stamp = pmt.dict_ref(value, pmt.intern(\"timestamp_ns\"), pmt.PMT_NIL)\n\
+      \        if not pmt.is_symbol(label) or not pmt.is_uint64(stamp):\n        \
+      \    return\n        label = pmt.symbol_to_string(label)\n        with self.lock:\n\
+      \            if label in self.frames:\n                self.frames[label].setdefault(event,\
+      \ pmt.to_uint64(stamp))\n                self.report(label)\n\n    def handle_decoded(self,\
+      \ message):\n        \"\"\"Match a CRC-valid MAC PDU using its native completion\
+      \ timestamp.\n\n        The decoder removes the FCS. Matching assumes a 24-byte\
+      \ MAC header:\n        bytes 22:24 hold sequence control and bytes 24 onward\
+      \ are the payload.\n        Exact payload and sequence matching avoids shifting\
+      \ identities after\n        a lost or reordered packet. The first completion\
+      \ wins for duplicates.\n\n        Args:\n            message (pmt.pmt_t): Decoder\
+      \ PDU with phy_completed_ns metadata and\n                MAC bytes as a blob\
+      \ or u8vector. Malformed envelopes are ignored.\n\n        Raises:\n       \
+      \     RuntimeError: If native completion metadata is absent, indicating\n  \
+      \              an incompatible decoder (usually the system library).\n     \
+      \   \"\"\"\n        # Diagnostic only: this Python arrival time is NOT the measurement\
+      \ endpoint.\n        observed = time.monotonic_ns()\n        if not pmt.is_pair(message):\n\
+      \            return\n        data = pmt.cdr(message)\n        if not (pmt.is_blob(data)\
+      \ or pmt.is_u8vector(data)):\n            return\n        metadata = pmt.car(message)\n\
+      \        completed = pmt.dict_ref(metadata, pmt.intern(\"phy_completed_ns\"\
+      ), pmt.PMT_NIL) if pmt.is_dict(metadata) else pmt.PMT_NIL\n        if not pmt.is_uint64(completed):\n\
+      \            raise RuntimeError(\"Decoder lacks phy_completed_ns; source ./local-env.sh\"\
+      )\n        completed = pmt.to_uint64(completed)\n        mac = bytes(pmt.to_python(data))\n\
+      \        match = self.by_payload.get(mac[24:]) if len(mac) >= 24 else None\n\
+      \        with self.lock:\n            if match is None or int.from_bytes(mac[22:24],\
+      \ \"little\") >> 4 != match[1]:\n                self.unmatched += 1\n     \
+      \           return\n            label = match[0]\n            frame = self.frames[label]\n\
+      \            if \"done\" in frame:\n                self.duplicates += 1\n \
+      \               return\n            frame[\"done\"] = completed\n          \
+      \  frame[\"observed\"] = observed\n            self.report(label)\n\n    def\
+      \ report(self, label):\n        \"\"\"Print one latency sample when both boundaries\
+      \ and completion exist.\n\n        The caller must hold self.lock. Completion\
+      \ may be observed before the\n        annotation's final windowing-tail tag;\
+      \ reporting waits for all three\n        timestamps without changing the original\
+      \ completion time. The tail\n        latency can be negative if decoding precedes\
+      \ the end-tag timestamp.\n\n        Args:\n            label (str): Known frame\
+      \ label identifying the retained timestamps.\n        \"\"\"\n        # Called\
+      \ with lock held. Output delivery can precede the annotation's\n        # final\
+      \ windowing-tail tag, so retain completion until both tags exist.\n        frame\
+      \ = self.frames[label]\n        if frame.get(\"reported\") or not all(k in frame\
+      \ for k in (\"start\", \"end\", \"done\")):\n            return\n        elapsed_ms\
+      \ = (frame[\"done\"] - frame[\"start\"]) / 1e6\n        tail_ms = (frame[\"\
+      done\"] - frame[\"end\"]) / 1e6\n        frame[\"reported\"] = True\n      \
+      \  self.count += 1\n        self.total_ms += elapsed_ms\n        print(f\"[PHY\
+      \ latency estimate] {label}: \"\n              f\"start-to-decoded={elapsed_ms:.4f}\
+      \ ms, \"\n              f\"end-to-decoded={tail_ms:.4f} ms, \"\n           \
+      \   f\"mean={self.total_ms / self.count:.4f} ms (n={self.count})\",\n      \
+      \        flush=True)\n\n    def finish(self):\n        \"\"\"Print matching\
+      \ counters and missing frame IDs after workers finish.\n\n        Call after\
+      \ top_block.wait() so input-tag collection and decoded-PDU\n        handling\
+      \ have finished before the final summary is calculated.\n        \"\"\"\n  \
+      \      with self.lock:\n            missing = [label for label, frame in self.frames.items()\
+      \ if not frame.get(\"reported\")]\n            print(f\"[PHY latency summary]\
+      \ matched={self.count}/{len(self.frames)}, \"\n                  f\"unmatched-output={self.unmatched},\
+      \ duplicate-output={self.duplicates}\", flush=True)\n            if missing:\n\
+      \                print(\"[PHY latency summary] missing: \" + \", \".join(missing),\
+      \ flush=True)\n"
     affinity: ''
     alias: ''
-    comment: Input tags are matched to decoded payload IDs without PHY tag propagation.
+    comment: Message-only reporter; all measurement timestamps are native.
     maxoutbuf: '0'
     metadata_file: file_path+"-meta"
     minoutbuf: '0'
   states:
-    _io_cache: ('PHY latency (payload match)', 'blk', [('metadata_file', "'../wifi_latency.sigmf-meta'")],
-      [('0', 'complex', 1), ('decoded', 'message', 1)], [('0', 'complex', 1)], 'Match
-      input boundary tags to CRC-valid decoded MAC payloads.', [])
+    _io_cache: '(''PHY latency (native timestamps)'', ''blk'', [(''metadata_file'',
+      "''../wifi_latency.sigmf-meta''")], [(''boundaries'', ''message'', 1), (''decoded'',
+      ''message'', 1)], [], "Match native input and decoder timestamps without processing
+      IQ.\n\n    Boundary messages preserve the source''s timestamp_ns. Completion
+      uses\n    phy_completed_ns from the local C++ decoder, before PDU publication.\n    Python
+      delivery, matching, and printing delays are excluded from the\n    reported
+      interval. All timestamps use the host monotonic clock.\n\n    Attributes:\n        by_payload
+      (dict): Payload bytes mapped to frame label and MAC sequence.\n        frames
+      (dict): Frame labels mapped to native start, end, and done\n            timestamps
+      in nanoseconds, plus delivery time and a reported flag.\n        lock (threading.Lock):
+      Protects frame state and counters across callbacks.\n        count (int): Number
+      of frames with a printed latency measurement.\n        total_ms (float): Sum
+      of reported start-to-decoded latencies.\n        unmatched (int): Decoded packets
+      without a matching payload/sequence pair.\n        duplicates (int): Additional
+      decoded packets for an already seen frame.\n    ", [])'
     bus_sink: false
     bus_source: false
     bus_structure: null
@@ -515,6 +574,21 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [888, 692.0]
+    rotation: 0
+    state: enabled
+- name: ieee802_11_latency_tag_monitor_0
+  id: ieee802_11_latency_tag_monitor
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: Native side tap; preserves ingress timestamps without Python IQ processing.
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1640, 280.0]
     rotation: 0
     state: enabled
 - name: ieee802_11_sync_long_0
@@ -644,14 +718,15 @@ connections:
 - [blocks_probe_rate_0, rate, blocks_message_debug_0, print]
 - [blocks_stream_to_vector_0, '0', fft_vxx_0, '0']
 - [blocks_throttle_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
-- [epy_block_latency, '0', virtual_sink_0, '0']
 - [fft_vxx_0, '0', ieee802_11_frame_equalizer_0, '0']
 - [ieee802_11_decode_mac_0, out, epy_block_latency, decoded]
 - [ieee802_11_frame_equalizer_0, '0', ieee802_11_decode_mac_0, '0']
+- [ieee802_11_latency_tag_monitor_0, events, epy_block_latency, boundaries]
 - [ieee802_11_sync_long_0, '0', blocks_stream_to_vector_0, '0']
 - [ieee802_11_sync_short_0, '0', blocks_delay_0, '0']
 - [ieee802_11_sync_short_0, '0', ieee802_11_sync_long_0, '0']
-- [mlir_aie_sigmf_tag_injector_0, '0', epy_block_latency, '0']
+- [mlir_aie_sigmf_tag_injector_0, '0', ieee802_11_latency_tag_monitor_0, '0']
+- [mlir_aie_sigmf_tag_injector_0, '0', virtual_sink_0, '0']
 - [virtual_source_0, '0', blocks_complex_to_mag_squared_0, '0']
 - [virtual_source_0, '0', blocks_delay_0_0, '0']
 - [virtual_source_0, '0', blocks_multiply_xx_0, '0']

@@ -32,6 +32,7 @@ list(APPEND ieee802_11_python_files
     chunks_to_symbols_python.cc
     constellations_python.cc
     decode_mac_python.cc
+    latency_tag_monitor_python.cc
     ether_encap_python.cc
     extract_csi_python.cc
     frame_equalizer_python.cc

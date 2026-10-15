@@ -24,6 +24,7 @@ namespace py = pybind11;
 void bind_chunks_to_symbols(py::module& m);
 void bind_constellations(py::module& m);
 void bind_decode_mac(py::module& m);
+void bind_latency_tag_monitor(py::module& m);
 void bind_ether_encap(py::module& m);
 void bind_extract_csi(py::module& m);
 void bind_frame_equalizer(py::module& m);
@@ -69,6 +70,7 @@ PYBIND11_MODULE(ieee802_11_python, m)
     bind_chunks_to_symbols(m);
     bind_constellations(m);
     bind_decode_mac(m);
+    bind_latency_tag_monitor(m);
     bind_ether_encap(m);
     bind_extract_csi(m);
     bind_frame_equalizer(m);

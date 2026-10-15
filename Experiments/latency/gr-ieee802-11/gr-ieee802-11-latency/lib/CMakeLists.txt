@@ -25,6 +25,7 @@ list(APPEND ieee802_11_sources
     chunks_to_symbols_impl.cc
     constellations_impl.cc
     decode_mac.cc
+    latency_tag_monitor.cc
     equalizer/base.cc
     equalizer/channel_ai_model.cc
     equalizer/cnn.cc

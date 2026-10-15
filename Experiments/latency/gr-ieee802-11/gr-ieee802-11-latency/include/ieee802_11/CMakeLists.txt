@@ -16,6 +16,7 @@ install(FILES
     decode_mac.h
     ether_encap.h
     extract_csi.h
+    latency_tag_monitor.h
     frame_equalizer.h
     mac.h
     mapper.h
