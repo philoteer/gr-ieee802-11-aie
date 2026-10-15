@@ -1,0 +1,1110 @@
+options:
+  parameters:
+    author: ''
+    catch_exceptions: 'True'
+    category: Custom
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: ''
+    gen_cmake: 'On'
+    gen_linking: dynamic
+    generate_options: no_gui
+    hier_block_src_path: '.:'
+    id: wifi_rx
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: ''
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: run
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: ''
+    window_size: (1000,1000)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 12.0]
+    rotation: 0
+    state: enabled
+
+blocks:
+- name: chan_est
+  id: variable
+  parameters:
+    comment: ''
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [184, 12.0]
+    rotation: 0
+    state: enabled
+- name: data_dir
+  id: variable
+  parameters:
+    comment: Dataset paths are relative to the generated script in Experiments/energy/gr-ieee802-11.
+    value: str(__import__("pathlib").Path(globals().get("__file__", "Experiments/energy/gr-ieee802-11/wifi_rx.py")).resolve().parents[3]
+      / "AI-model-CNN-Channel-est" / "data")
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [464, 88.0]
+    rotation: 0
+    state: enabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/stress_test.sigmf"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [464, 20.0]
+    rotation: 0
+    state: disabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/room_20260927.sigmf"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [616, 20.0]
+    rotation: 0
+    state: enabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/206.sigmf"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [776, 20.0]
+    rotation: 0
+    state: disabled
+- name: freq
+  id: variable
+  parameters:
+    comment: ''
+    value: '2417000000.0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [264, 12.0]
+    rotation: 0
+    state: enabled
+- name: samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: 20e6
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [368, 20.0]
+    rotation: 0
+    state: enabled
+- name: sync_length
+  id: variable
+  parameters:
+    comment: ''
+    value: '320'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [24, 180.0]
+    rotation: 0
+    state: enabled
+- name: window_size
+  id: variable
+  parameters:
+    comment: ''
+    value: '48'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [24, 108.0]
+    rotation: 0
+    state: enabled
+- name: blocks_complex_to_mag_0
+  id: blocks_complex_to_mag
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1232, 376.0]
+    rotation: 0
+    state: enabled
+- name: blocks_complex_to_mag_squared_0
+  id: blocks_complex_to_mag_squared
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [320, 280.0]
+    rotation: 0
+    state: enabled
+- name: blocks_conjugate_cc_0
+  id: blocks_conjugate_cc
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [600, 392.0]
+    rotation: 0
+    state: enabled
+- name: blocks_delay_0
+  id: blocks_delay
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    delay: sync_length
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_ports: '1'
+    showports: 'False'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [632, 516.0]
+    rotation: 0
+    state: enabled
+- name: blocks_delay_0_0
+  id: blocks_delay
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    delay: '16'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_ports: '1'
+    showports: 'False'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [288, 388.0]
+    rotation: 0
+    state: enabled
+- name: blocks_divide_xx_0
+  id: blocks_divide_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_inputs: '2'
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1448.0, 352]
+    rotation: 270
+    state: enabled
+- name: blocks_file_sink_0
+  id: blocks_file_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    append: 'False'
+    comment: ''
+    file: data_dir + "/tmp_out/orig.pcap"
+    type: byte
+    unbuffered: 'True'
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [808, 916.0]
+    rotation: 180
+    state: enabled
+- name: blocks_file_source_0
+  id: blocks_file_source
+  parameters:
+    affinity: ''
+    alias: ''
+    begin_tag: pmt.PMT_NIL
+    comment: ''
+    file: file_path+"-data"
+    length: '0'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    offset: '0'
+    repeat: 'False'
+    type: short
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1152, 124.0]
+    rotation: 0
+    state: enabled
+- name: blocks_interleaved_short_to_complex_0
+  id: blocks_interleaved_short_to_complex
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    scale_factor: '32768'
+    swap: 'False'
+    vector_input: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1376, 148.0]
+    rotation: 0
+    state: enabled
+- name: blocks_message_debug_0
+  id: blocks_message_debug
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    en_uvec: 'True'
+    log_level: info
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1600, 8.0]
+    rotation: 0
+    state: enabled
+- name: blocks_moving_average_xx_0
+  id: blocks_moving_average_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    length: window_size  + 16
+    max_iter: '4000'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    scale: '1'
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [600, 252.0]
+    rotation: 0
+    state: enabled
+- name: blocks_moving_average_xx_1
+  id: blocks_moving_average_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    length: window_size
+    max_iter: '4000'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    scale: '1'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [976, 348.0]
+    rotation: 0
+    state: enabled
+- name: blocks_multiply_xx_0
+  id: blocks_multiply_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_inputs: '2'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [800, 360.0]
+    rotation: 0
+    state: enabled
+- name: blocks_probe_rate_0
+  id: blocks_probe_rate
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha: '0.15'
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    mintime: '500.0'
+    name: ''
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1344, 16.0]
+    rotation: 0
+    state: enabled
+- name: blocks_stream_to_vector_0
+  id: blocks_stream_to_vector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: '64'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1160, 512.0]
+    rotation: 0
+    state: enabled
+- name: energy_logger_finish
+  id: snippet
+  parameters:
+    alias: ''
+    code: self.epy_block_energy_logger.finish_logging()
+    comment: Finish after all processing, on EOF or SIGINT/SIGTERM.
+    priority: '0'
+    section: main_after_stop
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [16, 252.0]
+    rotation: 0
+    state: enabled
+- name: energy_logger_prepare
+  id: snippet
+  parameters:
+    alias: ''
+    code: self.epy_block_energy_logger.begin_logging()
+    comment: ''
+    priority: '0'
+    section: main_after_init
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [16, 600]
+    rotation: 0
+    state: enabled
+- name: energy_logger_start
+  id: snippet
+  parameters:
+    alias: ''
+    code: 'self.epy_block_energy_logger.start_monitoring(lambda: self.mlir_aie_sigmf_tag_injector_0.nitems_written(0))'
+    comment: ''
+    priority: '0'
+    section: main_after_start
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [16, 680]
+    rotation: 0
+    state: enabled
+- name: epy_block_energy_logger
+  id: epy_block
+  parameters:
+    _source_code: "import atexit\nimport csv\nfrom pathlib import Path\nimport threading\n\
+      import time\n\nfrom gnuradio import gr\n\n\nclass blk(gr.basic_block):\n   \
+      \ \"\"\"Log energy using low-rate polling, without any streaming ports.\n\n\
+      \    Lifecycle snippets prepare the baseline before streaming, start the sampler\n\
+      \    after native counters are initialized, and finalize after top_block.wait().\n\
+      \    No Python work callback or extra IQ buffer reader is scheduled.\n\n   \
+      \ Attributes:\n        csv_path (Path): CSV destination, overwritten at each\
+      \ start.\n        interval (float): Requested delay between sensor readings\
+      \ in seconds.\n        rapl (Path): RAPL package domain directory.\n       \
+      \ supplies (Path): ACPI power supply directory.\n        samples (int): Number\
+      \ of complex IQ samples last polled from the native counter.\n    \"\"\"\n\n\
+      \    def __init__(self, csv_path=\"original_energy.csv\", interval=0.5,\n  \
+      \               rapl_path=\"/sys/class/powercap/intel-rapl:0\",\n          \
+      \       power_supply_path=\"/sys/class/power_supply\"):\n        \"\"\"Initialize\
+      \ the monitor without opening sensors or starting a thread.\n\n        Args:\n\
+      \            csv_path (str): Destination path for the measurement CSV.\n   \
+      \         interval (float): Sampling delay in seconds, at least 0.05.\n    \
+      \        rapl_path (str): Directory containing energy_uj, name, and\n      \
+      \          max_energy_range_uj for the measured RAPL domain.\n            power_supply_path\
+      \ (str): Directory containing the battery and\n                external power\
+      \ supply sysfs entries.\n\n        Raises:\n            ValueError: If interval\
+      \ is less than 0.05 seconds.\n        \"\"\"\n        gr.basic_block.__init__(self,\
+      \ name=\"Run Energy Logger\",\n                               in_sig=None, out_sig=None)\n\
+      \        if interval < 0.05:\n            raise ValueError(\"Energy sampling\
+      \ interval must be at least 0.05 s\")\n        self.csv_path = Path(csv_path)\n\
+      \        self.interval = interval\n        self.rapl = Path(rapl_path)\n   \
+      \     self.supplies = Path(power_supply_path)\n        self.samples = 0\n  \
+      \      self._counter = lambda: 0\n        self._sensor_files = {}\n        self._last_flush_ns\
+      \ = 0\n        self._done = threading.Event()\n        self._thread = None\n\
+      \        self._file = None\n        self._error = None\n        self._previous\
+      \ = None\n        self._energy_j = 0.0\n\n    def _read(self, path):\n     \
+      \   \"\"\"Read a sysfs attribute and remove surrounding whitespace.\n\n    \
+      \    Args:\n            path (Path): Attribute file to read.\n\n        Returns:\n\
+      \            str: Stripped attribute value.\n\n        Raises:\n           \
+      \ OSError: If the attribute cannot be read.\n        \"\"\"\n        stream\
+      \ = self._sensor_files.get(path)\n        if stream is None:\n            stream\
+      \ = path.open(\"r\")\n            self._sensor_files[path] = stream\n      \
+      \  stream.seek(0)\n        return stream.read().strip()\n\n    def _close_sensors(self):\n\
+      \        \"\"\"Close cached sysfs files after the sampler thread has stopped.\"\
+      \"\"\n        for stream in self._sensor_files.values():\n            stream.close()\n\
+      \        self._sensor_files.clear()\n\n    def _battery_reading(self):\n   \
+      \     \"\"\"Read battery measurements only while unplugged and discharging.\n\
+      \n        Returns:\n            tuple: External power online flag (bool), battery\
+      \ status (str),\n            discharge power in watts (float), and stored energy\
+      \ in joules\n            (float). The last two values are empty strings when\
+      \ plugged in\n            or when the battery is not discharging.\n\n      \
+      \  Raises:\n            OSError: If a required power supply attribute cannot\
+      \ be read.\n            ValueError: If a numeric attribute cannot be parsed.\n\
+      \        \"\"\"\n        # ACPI sysfs is also the source of sensors' BAT0-acpi\
+      \ power1.\n        online = any(int(self._read(path / \"online\")) != 0\n  \
+      \                   for path in self._external)\n        status = self._read(self._battery\
+      \ / \"status\")\n        unplugged = not online and status == \"Discharging\"\
+      \n        if not unplugged:\n            return online, status, \"\", \"\"\n\
+      \        # power_now is in microwatts; energy_now is in micro-watt-hours.\n\
+      \        watts = int(self._read(self._battery / \"power_now\")) / 1e6\n    \
+      \    joules = int(self._read(self._battery / \"energy_now\")) * 0.0036\n   \
+      \     return online, status, watts, joules\n\n    def _sample(self, phase):\n\
+      \        \"\"\"Take one sensor snapshot, update energy totals, and buffer a\
+      \ CSV row.\n\n        The first reading establishes the monotonic time and counter\
+      \ baseline.\n        Later readings derive interval-average package power and\
+      \ cumulative\n        energy. Calls must be serialized between startup, the\
+      \ monitor thread,\n        and finalization.\n\n        Args:\n            phase\
+      \ (str): Row marker: \"start\", \"sample\", or \"end\".\n\n        Raises:\n\
+      \            OSError: If a sensor read or CSV write fails.\n            ValueError:\
+      \ If a numeric sensor attribute cannot be parsed.\n        \"\"\"\n        counter\
+      \ = int(self._read(self.rapl / \"energy_uj\"))\n        now = time.monotonic_ns()\n\
+      \        self.samples = int(self._counter())\n        wall = time.time_ns()\n\
+      \        online, status, system_w, battery_j = self._battery_reading()\n   \
+      \     power_w = \"\"\n        if self._previous is None:\n            self._start_ns\
+      \ = now\n        else:\n            previous_ns, previous_counter = self._previous\n\
+      \            delta = counter - previous_counter\n            if delta < 0:\n\
+      \                # Correct one counter wrap between consecutive readings.\n\
+      \                delta += self._range_uj\n            self._energy_j += delta\
+      \ / 1e6\n            # Convert microjoules / nanoseconds to joules / second\
+      \ (watts).\n            power_w = delta * 1000.0 / (now - previous_ns)\n   \
+      \     self._previous = now, counter\n        self._writer.writerow({\n     \
+      \       \"phase\": phase,\n            \"unix_time_ns\": wall,\n           \
+      \ \"elapsed_s\": (now - self._start_ns) / 1e9,\n            \"samples_processed\"\
+      : self.samples,\n            \"rapl_domain\": self._domain,\n            \"\
+      rapl_energy_uj\": counter,\n            \"rapl_max_energy_range_uj\": self._range_uj,\n\
+      \            \"soc_energy_j\": self._energy_j,\n            \"soc_power_w\"\
+      : power_w,\n            \"ac_online\": int(online),\n            \"battery_status\"\
+      : status,\n            \"system_power_w\": system_w,\n            \"battery_energy_j\"\
+      : battery_j,\n        })\n        # Flush boundary rows and at most once every\
+      \ five seconds during the run.\n        if phase != \"sample\" or now - self._last_flush_ns\
+      \ >= 5_000_000_000:\n            self._file.flush()\n            self._last_flush_ns\
+      \ = now\n\n    def _prepare_logging(self):\n        \"\"\"Initialize sensors,\
+      \ CSV output, and a not-yet-started sampler thread.\n\n        Called by begin_logging()\
+      \ before the flowgraph starts. Takes the baseline\n        reading synchronously\
+      \ before launching the monitor thread and\n        registers an exit-time cleanup\
+      \ fallback.\n\n        Returns:\n            bool: True when initialization\
+      \ succeeds.\n\n        Raises:\n            RuntimeError: If there is not exactly\
+      \ one battery or no external\n                power supply online indicator\
+      \ is available.\n            OSError: If sensor discovery, attribute reads,\
+      \ or CSV setup fails.\n            ValueError: If a numeric sensor attribute\
+      \ cannot be parsed.\n        \"\"\"\n        self.csv_path = Path(self.csv_path)\n\
+      \        self.rapl = Path(self.rapl)\n        self.supplies = Path(self.supplies)\n\
+      \        self.samples = 0\n        self._counter = lambda: 0\n        self._last_flush_ns\
+      \ = 0\n        self._thread = None\n        self._previous = None\n        self._energy_j\
+      \ = 0.0\n        self._error = None\n        self._done.clear()\n        self._range_uj\
+      \ = int(self._read(self.rapl / \"max_energy_range_uj\"))\n        self._domain\
+      \ = self._read(self.rapl / \"name\")\n        batteries = [p for p in self.supplies.iterdir()\n\
+      \                     if (p / \"type\").exists() and self._read(p / \"type\"\
+      ) == \"Battery\"]\n        if len(batteries) != 1:\n            raise RuntimeError(\"\
+      Energy logger requires exactly one battery\")\n        self._battery = batteries[0]\n\
+      \        self._external = [p for p in self.supplies.iterdir()\n            \
+      \              if p != self._battery and (p / \"online\").exists()]\n      \
+      \  if not self._external:\n            raise RuntimeError(\"No external power\
+      \ supply online indicator found\")\n        self.csv_path.parent.mkdir(parents=True,\
+      \ exist_ok=True)\n        self._file = self.csv_path.open(\"w\", newline=\"\"\
+      )\n        self._writer = csv.DictWriter(self._file, fieldnames=[\n        \
+      \    \"phase\", \"unix_time_ns\", \"elapsed_s\", \"samples_processed\",\n  \
+      \          \"rapl_domain\", \"rapl_energy_uj\", \"rapl_max_energy_range_uj\"\
+      ,\n            \"soc_energy_j\", \"soc_power_w\", \"ac_online\", \"battery_status\"\
+      ,\n            \"system_power_w\", \"battery_energy_j\"])\n        self._writer.writeheader()\n\
+      \        try:\n            self._sample(\"start\")\n        except Exception:\n\
+      \            self._file.close()\n            self._file = None\n           \
+      \ raise\n        self._thread = threading.Thread(target=self._monitor, daemon=True)\n\
+      \        atexit.register(self.finish_logging)\n        return True\n\n    def\
+      \ _monitor(self):\n        \"\"\"Sample periodically until finalization requests\
+      \ a stop.\n\n        Waiting on the event lets finalization wake the thread\
+      \ immediately.\n        Sensor or write errors are saved and re-raised by finish_logging(),\n\
+      \        leaving the CSV without an end marker.\n        \"\"\"\n        while\
+      \ not self._done.wait(self.interval):\n            try:\n                self._sample(\"\
+      sample\")\n            except Exception as error:\n                self._error\
+      \ = error\n                return\n\n    def finish_logging(self):\n       \
+      \ \"\"\"Stop monitoring, take the final reading, and close the CSV.\n\n    \
+      \    Call after top_block.wait() returns. This method is idempotent after\n\
+      \        the CSV closes. The monitor is joined before the final reading to\n\
+      \        prevent concurrent writes. Cleanup closes the CSV even on failure.\n\
+      \n        Raises:\n            RuntimeError: If background sampling failed.\n\
+      \            OSError: If the final sensor read or CSV write fails.\n       \
+      \     ValueError: If a final numeric sensor attribute cannot be parsed.\n  \
+      \      \"\"\"\n        # The IQ branch can finish before the decoder. Do not\
+      \ finalize in\n        # block.stop(): the flowgraph's after-stop snippet calls\
+      \ this after wait().\n        if self._file is None:\n            self._close_sensors()\n\
+      \            return\n        self._done.set()\n        if self._thread is not\
+      \ None and self._thread.ident is not None:\n            self._thread.join()\n\
+      \        try:\n            if self._error is not None:\n                raise\
+      \ RuntimeError(\"Energy sampling failed\") from self._error\n            self._sample(\"\
+      end\")\n        finally:\n            self._file.close()\n            self._file\
+      \ = None\n            self._close_sensors()\n            atexit.unregister(self.finish_logging)\n\
+      \n    def begin_logging(self):\n        \"\"\"Take the baseline before top_block.start(),\
+      \ without starting a thread.\n\n        Raises:\n            RuntimeError: If\
+      \ logging is active or sensor discovery fails.\n            OSError: If sensors\
+      \ or the CSV cannot be accessed.\n            ValueError: If a numeric sensor\
+      \ reading is invalid.\n        \"\"\"\n        if self._file is not None:\n\
+      \            raise RuntimeError(\"Energy logging is already active\")\n    \
+      \    try:\n            self._prepare_logging()\n        except Exception:\n\
+      \            self.finish_logging()\n            raise\n\n    def start_monitoring(self,\
+      \ sample_counter):\n        \"\"\"Start sampling after the native source has\
+      \ initialized its counters.\n\n        Args:\n            sample_counter (Callable[[],\
+      \ int]): Native IQ sample counter, polled\n                once per sensor snapshot\
+      \ rather than per streaming buffer.\n\n        Raises:\n            RuntimeError:\
+      \ If logging is unprepared or monitoring is already active.\n        \"\"\"\n\
+      \        if self._file is None or self._thread.ident is not None:\n        \
+      \    raise RuntimeError(\"Prepare logging once before starting monitoring\"\
+      )\n        self._counter = sample_counter\n        self._thread.start()\n"
+    affinity: ''
+    alias: ''
+    comment: No stream ports; lifecycle snippets control low-rate native-counter polling.
+    csv_path: data_dir + "/tmp_out/original_energy.csv"
+    interval: '0.5'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    power_supply_path: '"/sys/class/power_supply"'
+    rapl_path: '"/sys/class/powercap/intel-rapl:0"'
+  states:
+    _io_cache: '(''Run Energy Logger'', ''blk'', [(''csv_path'', "''original_energy.csv''"),
+      (''interval'', ''0.5''), (''rapl_path'', "''/sys/class/powercap/intel-rapl:0''"),
+      (''power_supply_path'', "''/sys/class/power_supply''")], [], [], ''Log energy
+      using low-rate polling, without any streaming ports.\n\n    Lifecycle snippets
+      prepare the baseline before streaming, start the sampler\n    after native counters
+      are initialized, and finalize after top_block.wait().\n    No Python work callback
+      or extra IQ buffer reader is scheduled.\n\n    Attributes:\n        csv_path
+      (Path): CSV destination, overwritten at each start.\n        interval (float):
+      Requested delay between sensor readings in seconds.\n        rapl (Path): RAPL
+      package domain directory.\n        supplies (Path): ACPI power supply directory.\n        samples
+      (int): Number of complex IQ samples last polled from the native counter.\n    '',
+      [''csv_path'', ''interval''])'
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [288, 644.0]
+    rotation: 0
+    state: enabled
+- name: epy_block_iq_tag_sink
+  id: epy_block
+  parameters:
+    _source_code: "import numpy as np\nfrom gnuradio import gr\nimport pmt\n\n\nclass\
+      \ blk(gr.sync_block):\n    def __init__(self, frequency_callback=lambda value:\
+      \ None):\n        gr.sync_block.__init__(\n            self, name=\"IQ Tag Frequency\
+      \ Retuner\", in_sig=[np.complex64], out_sig=None)\n        self.frequency_callback\
+      \ = frequency_callback\n        self.frequency_key = pmt.intern(\"rx_freq\"\
+      )\n\n    def work(self, input_items, output_items):\n        count = len(input_items[0])\n\
+      \        for tag in self.get_tags_in_window(0, 0, count, self.frequency_key):\n\
+      \            self.frequency_callback(pmt.to_double(tag.value))\n        return\
+      \ count\n"
+    affinity: ''
+    alias: ''
+    comment: ''
+    frequency_callback: 'lambda value: self.set_freq(value)'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    _io_cache: ('IQ Tag Frequency Retuner', 'blk', [('frequency_callback', '<function
+      blk.<lambda> at 0x70e31af4e480>')], [('0', 'complex', 1)], [], '', ['frequency_callback'])
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [288, 596.0]
+    rotation: 0
+    state: enabled
+- name: fft_vxx_0
+  id: fft_vxx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    fft_size: '64'
+    forward: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nthreads: '1'
+    shift: 'True'
+    type: complex
+    window: window.rectangular(64)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [624, 684.0]
+    rotation: 0
+    state: enabled
+- name: foo_wireshark_connector_0
+  id: foo_wireshark_connector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    debug: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    tech: '127'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1152, 924.0]
+    rotation: 180
+    state: enabled
+- name: ieee802_11_decode_mac_0
+  id: ieee802_11_decode_mac
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    debug: 'False'
+    log: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1184, 700.0]
+    rotation: 0
+    state: enabled
+- name: ieee802_11_frame_equalizer_0
+  id: ieee802_11_frame_equalizer
+  parameters:
+    affinity: ''
+    algo: ieee802_11.Equalizer(chan_est)
+    alias: ''
+    bw: samp_rate
+    comment: ''
+    debug: 'False'
+    freq: freq
+    log: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [888, 692.0]
+    rotation: 0
+    state: enabled
+- name: ieee802_11_parse_mac_0
+  id: ieee802_11_parse_mac
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    debug: 'False'
+    log: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1176, 812.0]
+    rotation: 180
+    state: enabled
+- name: ieee802_11_sync_long_0
+  id: ieee802_11_sync_long
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    debug: 'False'
+    log: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    sync_length: sync_length
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [848, 484.0]
+    rotation: 0
+    state: enabled
+- name: ieee802_11_sync_short_0
+  id: ieee802_11_sync_short
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    debug: 'False'
+    log: 'False'
+    maxoutbuf: '0'
+    min_plateau: '2'
+    minoutbuf: '0'
+    threshold: '0.56'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [440, 464.0]
+    rotation: 0
+    state: enabled
+- name: mlir_aie_sigmf_tag_injector_0
+  id: mlir_aie_sigmf_tag_injector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    metadata_file: file_path+"-meta"
+    minoutbuf: '0'
+    start_sample: '0'
+    tag_key: rx_freq
+    type: complex
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1584, 148.0]
+    rotation: 0
+    state: enabled
+- name: pdu_pdu_to_tagged_stream_0
+  id: pdu_pdu_to_tagged_stream
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    tag: packet_len
+    type: complex
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [872, 820.0]
+    rotation: 180
+    state: disabled
+- name: qtgui_const_sink_x_0
+  id: qtgui_const_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    axislabels: 'True'
+    color1: '"blue"'
+    color10: '"red"'
+    color2: '"red"'
+    color3: '"red"'
+    color4: '"red"'
+    color5: '"red"'
+    color6: '"red"'
+    color7: '"red"'
+    color8: '"red"'
+    color9: '"red"'
+    comment: ''
+    grid: 'False'
+    gui_hint: ''
+    label1: ''
+    label10: ''
+    label2: ''
+    label3: ''
+    label4: ''
+    label5: ''
+    label6: ''
+    label7: ''
+    label8: ''
+    label9: ''
+    legend: 'True'
+    marker1: '0'
+    marker10: '0'
+    marker2: '0'
+    marker3: '0'
+    marker4: '0'
+    marker5: '0'
+    marker6: '0'
+    marker7: '0'
+    marker8: '0'
+    marker9: '0'
+    name: '""'
+    nconnections: '1'
+    size: 48*10
+    style1: '0'
+    style10: '0'
+    style2: '0'
+    style3: '0'
+    style4: '0'
+    style5: '0'
+    style6: '0'
+    style7: '0'
+    style8: '0'
+    style9: '0'
+    tr_chan: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_slope: qtgui.TRIG_SLOPE_POS
+    tr_tag: '""'
+    type: complex
+    update_time: '0.10'
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    xmax: '2'
+    xmin: '-2'
+    ymax: '2'
+    ymin: '-2'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [632, 812.0]
+    rotation: 180
+    state: disabled
+- name: qtgui_time_sink_x_0
+  id: qtgui_time_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    axislabels: 'True'
+    color1: blue
+    color10: dark blue
+    color2: red
+    color3: green
+    color4: black
+    color5: cyan
+    color6: magenta
+    color7: yellow
+    color8: dark red
+    color9: dark green
+    comment: ''
+    ctrlpanel: 'False'
+    entags: 'True'
+    grid: 'False'
+    gui_hint: ''
+    label1: ''
+    label10: ''
+    label2: ''
+    label3: ''
+    label4: ''
+    label5: ''
+    label6: ''
+    label7: ''
+    label8: ''
+    label9: ''
+    legend: 'True'
+    marker1: '-1'
+    marker10: '-1'
+    marker2: '-1'
+    marker3: '-1'
+    marker4: '-1'
+    marker5: '-1'
+    marker6: '-1'
+    marker7: '-1'
+    marker8: '-1'
+    marker9: '-1'
+    name: '""'
+    nconnections: '1'
+    size: '1024'
+    srate: samp_rate
+    stemplot: 'False'
+    style1: '1'
+    style10: '1'
+    style2: '1'
+    style3: '1'
+    style4: '1'
+    style5: '1'
+    style6: '1'
+    style7: '1'
+    style8: '1'
+    style9: '1'
+    tr_chan: '0'
+    tr_delay: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_slope: qtgui.TRIG_SLOPE_POS
+    tr_tag: '""'
+    type: float
+    update_time: '0.10'
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    ylabel: Amplitude
+    ymax: '1'
+    ymin: '-1'
+    yunit: '""'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1460.0, 504]
+    rotation: 270
+    state: disabled
+- name: virtual_sink_0
+  id: virtual_sink
+  parameters:
+    alias: ''
+    comment: ''
+    stream_id: iq
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1816, 172.0]
+    rotation: 0
+    state: enabled
+- name: virtual_source_0
+  id: virtual_source
+  parameters:
+    alias: ''
+    comment: ''
+    stream_id: iq
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [64, 340.0]
+    rotation: 0
+    state: enabled
+- name: virtual_source_0_0
+  id: virtual_source
+  parameters:
+    alias: ''
+    comment: ''
+    stream_id: iq
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1168, 32.0]
+    rotation: 0
+    state: enabled
+
+connections:
+- [blocks_complex_to_mag_0, '0', blocks_divide_xx_0, '0']
+- [blocks_complex_to_mag_squared_0, '0', blocks_moving_average_xx_0, '0']
+- [blocks_conjugate_cc_0, '0', blocks_multiply_xx_0, '1']
+- [blocks_delay_0, '0', ieee802_11_sync_long_0, '1']
+- [blocks_delay_0_0, '0', blocks_conjugate_cc_0, '0']
+- [blocks_delay_0_0, '0', ieee802_11_sync_short_0, '0']
+- [blocks_divide_xx_0, '0', ieee802_11_sync_short_0, '2']
+- [blocks_divide_xx_0, '0', qtgui_time_sink_x_0, '0']
+- [blocks_file_source_0, '0', blocks_interleaved_short_to_complex_0, '0']
+- [blocks_interleaved_short_to_complex_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
+- [blocks_moving_average_xx_0, '0', blocks_divide_xx_0, '1']
+- [blocks_moving_average_xx_1, '0', blocks_complex_to_mag_0, '0']
+- [blocks_moving_average_xx_1, '0', ieee802_11_sync_short_0, '1']
+- [blocks_multiply_xx_0, '0', blocks_moving_average_xx_1, '0']
+- [blocks_probe_rate_0, rate, blocks_message_debug_0, print]
+- [blocks_stream_to_vector_0, '0', fft_vxx_0, '0']
+- [fft_vxx_0, '0', ieee802_11_frame_equalizer_0, '0']
+- [foo_wireshark_connector_0, '0', blocks_file_sink_0, '0']
+- [ieee802_11_decode_mac_0, out, foo_wireshark_connector_0, in]
+- [ieee802_11_decode_mac_0, out, ieee802_11_parse_mac_0, in]
+- [ieee802_11_frame_equalizer_0, '0', ieee802_11_decode_mac_0, '0']
+- [ieee802_11_frame_equalizer_0, symbols, pdu_pdu_to_tagged_stream_0, pdus]
+- [ieee802_11_sync_long_0, '0', blocks_stream_to_vector_0, '0']
+- [ieee802_11_sync_short_0, '0', blocks_delay_0, '0']
+- [ieee802_11_sync_short_0, '0', ieee802_11_sync_long_0, '0']
+- [mlir_aie_sigmf_tag_injector_0, '0', virtual_sink_0, '0']
+- [pdu_pdu_to_tagged_stream_0, '0', qtgui_const_sink_x_0, '0']
+- [virtual_source_0, '0', blocks_complex_to_mag_squared_0, '0']
+- [virtual_source_0, '0', blocks_delay_0_0, '0']
+- [virtual_source_0, '0', blocks_multiply_xx_0, '0']
+- [virtual_source_0, '0', epy_block_iq_tag_sink, '0']
+- [virtual_source_0_0, '0', blocks_probe_rate_0, '0']
+
+metadata:
+  file_format: 1
+  grc_version: 3.10.9.2
