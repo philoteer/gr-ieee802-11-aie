@@ -37,7 +37,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '"data/raw_capture/206.sigmf"'
+    value: '"../wifi_latency.sigmf"'
   states:
     bus_sink: false
     bus_source: false
@@ -49,7 +49,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: 2.417e9
+    value: 2.412e9
   states:
     bus_sink: false
     bus_source: false
@@ -100,7 +100,7 @@ blocks:
     alias: ''
     append: 'False'
     comment: ''
-    file: data/tmp_out/replaced.pcap
+    file: decoded.pcap
     type: byte
     unbuffered: 'True'
     vlen: '1'
@@ -124,7 +124,7 @@ blocks:
     minoutbuf: '0'
     offset: '0'
     repeat: 'False'
-    type: short
+    type: complex
     vlen: '1'
   states:
     bus_sink: false
@@ -150,7 +150,7 @@ blocks:
     bus_structure: null
     coordinate: [1224, 140.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: blocks_message_debug_0
   id: blocks_message_debug
   parameters:
@@ -376,8 +376,8 @@ blocks:
     minoutbuf: '0'
     nominal_frequency: freq
     num_slots: '2'
-    path_insts_bin: '"kernel/build/insts.bin"'
-    path_xclbin: '"kernel/build/final.xclbin"'
+    path_insts_bin: '"../../../base/kernel/build/insts.bin"'
+    path_xclbin: '"../../../base/kernel/build/final.xclbin"'
     weights_path: ''''''
   states:
     bus_sink: false
@@ -446,8 +446,7 @@ blocks:
     state: disabled
 
 connections:
-- [blocks_file_source_0, '0', blocks_interleaved_short_to_complex_0, '0']
-- [blocks_interleaved_short_to_complex_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
+- [blocks_file_source_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
 - [blocks_probe_rate_0, rate, blocks_message_debug_0, print]
 - [blocks_stream_to_vector_0, '0', ieee802_11_decode_mac_0, '0']
 - [epy_block_0_0, '0', blocks_stream_to_vector_0, '0']
