@@ -19,7 +19,7 @@ options:
     realtime_scheduling: ''
     run: 'True'
     run_command: '{python} -u {filename}'
-    run_options: run
+    run_options: prompt
     sizing_mode: fixed
     thread_safe_setters: ''
     title: ''
@@ -421,7 +421,7 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    comment: 'Pace IQ before timestamping, as in the NPU latency experiment.'
+    comment: Pace IQ before timestamping, as in the NPU latency experiment.
     ignoretag: 'True'
     limit: items
     maximum: '1024'
@@ -435,145 +435,6 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [1344, 124.0]
-    rotation: 0
-    state: enabled
-- name: latency_finish
-  id: snippet
-  parameters:
-    alias: ''
-    code: self.epy_block_latency.finish()
-    comment: Summarize matched and missing frames after all workers finish.
-    priority: '0'
-    section: main_after_stop
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [16, 744.0]
-    rotation: 0
-    state: enabled
-- name: epy_block_latency
-  id: epy_block
-  parameters:
-    _source_code: |
-      import json
-      import threading
-      import time
-
-      import numpy as np
-      import pmt
-      from gnuradio import gr
-
-
-      class blk(gr.sync_block):
-          """Match input boundary tags to CRC-valid decoded MAC payloads."""
-
-          def __init__(self, metadata_file="../wifi_latency.sigmf-meta"):
-              gr.sync_block.__init__(self, name="PHY latency (payload match)",
-                                     in_sig=[np.complex64], out_sig=[np.complex64])
-              with open(metadata_file) as stream:
-                  metadata = json.load(stream)
-              self.by_payload = {}
-              self.frames = {}
-              for annotation in metadata.get("annotations", []):
-                  label = annotation.get("core:label", "")
-                  if not label.startswith("wifi-frame-"):
-                      continue
-                  info = json.loads(annotation["core:comment"])
-                  payload = info["payload_ascii"].encode("ascii")
-                  if payload in self.by_payload or label in self.frames:
-                      raise ValueError("Latency matching requires unique frame IDs and payloads")
-                  self.by_payload[payload] = (label, info["mac_sequence_number"])
-                  self.frames[label] = {}
-              if not self.frames:
-                  raise ValueError("No annotated Wi-Fi latency frames found")
-              self.lock = threading.Lock()
-              self.count = 0
-              self.total_ms = 0.0
-              self.unmatched = 0
-              self.duplicates = 0
-              self.message_port_register_in(pmt.intern("decoded"))
-              self.set_msg_handler(pmt.intern("decoded"), self.handle_decoded)
-
-          def work(self, input_items, output_items):
-              count = len(input_items[0])
-              # Read tags inline, before releasing these samples to the receiver.
-              # Keep timestamps out-of-band; sync/equalizer blocks may drop tags.
-              with self.lock:
-                  for tag in self.get_tags_in_window(0, 0, count):
-                      if not any(pmt.eq(tag.key, pmt.intern(k)) for k in ("frame_start", "frame_end")):
-                          continue
-                      if not pmt.is_dict(tag.value):
-                          continue
-                      label = pmt.dict_ref(tag.value, pmt.intern("frame_id"), pmt.PMT_NIL)
-                      stamp = pmt.dict_ref(tag.value, pmt.intern("timestamp_ns"), pmt.PMT_NIL)
-                      if not pmt.is_symbol(label) or not pmt.is_uint64(stamp):
-                          continue
-                      label = pmt.symbol_to_string(label)
-                      if label in self.frames:
-                          event = "start" if pmt.eq(tag.key, pmt.intern("frame_start")) else "end"
-                          self.frames[label].setdefault(event, pmt.to_uint64(stamp))
-                          self.report(label)
-              output_items[0][:count] = input_items[0][:count]
-              return count
-
-          def handle_decoded(self, message):
-              # Timestamp at handler entry, before matching/printing/locking.
-              completed = time.monotonic_ns()
-              if not pmt.is_pair(message):
-                  return
-              data = pmt.cdr(message)
-              if not (pmt.is_blob(data) or pmt.is_u8vector(data)):
-                  return
-              mac = bytes(pmt.to_python(data))
-              match = self.by_payload.get(mac[24:]) if len(mac) >= 24 else None
-              with self.lock:
-                  if match is None or int.from_bytes(mac[22:24], "little") >> 4 != match[1]:
-                      self.unmatched += 1
-                      return
-                  label = match[0]
-                  frame = self.frames[label]
-                  if "done" in frame:
-                      self.duplicates += 1
-                      return
-                  frame["done"] = completed
-                  self.report(label)
-
-          def report(self, label):
-              # Called with lock held. Output delivery can precede the annotation's
-              # final windowing-tail tag, so retain completion until both tags exist.
-              frame = self.frames[label]
-              if frame.get("reported") or not all(k in frame for k in ("start", "end", "done")):
-                  return
-              elapsed_ms = (frame["done"] - frame["start"]) / 1e6
-              tail_ms = (frame["done"] - frame["end"]) / 1e6
-              frame["reported"] = True
-              self.count += 1
-              self.total_ms += elapsed_ms
-              print(f"[PHY latency estimate] {label}: "
-                    f"start-to-decoded={elapsed_ms:.4f} ms, "
-                    f"end-to-decoded={tail_ms:.4f} ms, "
-                    f"mean={self.total_ms / self.count:.4f} ms (n={self.count})",
-                    flush=True)
-
-          def finish(self):
-              with self.lock:
-                  missing = [label for label, frame in self.frames.items() if not frame.get("reported")]
-                  print(f"[PHY latency summary] matched={self.count}/{len(self.frames)}, "
-                        f"unmatched-output={self.unmatched}, duplicate-output={self.duplicates}", flush=True)
-                  if missing:
-                      print("[PHY latency summary] missing: " + ", ".join(missing), flush=True)
-    metadata_file: file_path+"-meta"
-    affinity: ''
-    alias: ''
-    comment: Input tags are matched to decoded payload IDs without PHY tag propagation.
-    maxoutbuf: '0'
-    minoutbuf: '0'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1840, 252.0]
     rotation: 0
     state: enabled
 - name: energy_logger_finish
@@ -830,11 +691,93 @@ blocks:
     minoutbuf: '0'
   states:
     _io_cache: ('IQ Tag Frequency Retuner', 'blk', [('frequency_callback', '<function
-      blk.<lambda> at 0x70e31af4e480>')], [('0', 'complex', 1)], [], '', ['frequency_callback'])
+      blk.<lambda> at 0x7cb3ac29b420>')], [('0', 'complex', 1)], [], '', ['frequency_callback'])
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate: [288, 596.0]
+    rotation: 0
+    state: enabled
+- name: epy_block_latency
+  id: epy_block
+  parameters:
+    _source_code: "import json\nimport threading\nimport time\n\nimport numpy as np\n\
+      import pmt\nfrom gnuradio import gr\n\n\nclass blk(gr.sync_block):\n    \"\"\
+      \"Match input boundary tags to CRC-valid decoded MAC payloads.\"\"\"\n\n   \
+      \ def __init__(self, metadata_file=\"../wifi_latency.sigmf-meta\"):\n      \
+      \  gr.sync_block.__init__(self, name=\"PHY latency (payload match)\",\n    \
+      \                           in_sig=[np.complex64], out_sig=[np.complex64])\n\
+      \        with open(metadata_file) as stream:\n            metadata = json.load(stream)\n\
+      \        self.by_payload = {}\n        self.frames = {}\n        for annotation\
+      \ in metadata.get(\"annotations\", []):\n            label = annotation.get(\"\
+      core:label\", \"\")\n            if not label.startswith(\"wifi-frame-\"):\n\
+      \                continue\n            info = json.loads(annotation[\"core:comment\"\
+      ])\n            payload = info[\"payload_ascii\"].encode(\"ascii\")\n      \
+      \      if payload in self.by_payload or label in self.frames:\n            \
+      \    raise ValueError(\"Latency matching requires unique frame IDs and payloads\"\
+      )\n            self.by_payload[payload] = (label, info[\"mac_sequence_number\"\
+      ])\n            self.frames[label] = {}\n        if not self.frames:\n     \
+      \       raise ValueError(\"No annotated Wi-Fi latency frames found\")\n    \
+      \    self.lock = threading.Lock()\n        self.count = 0\n        self.total_ms\
+      \ = 0.0\n        self.unmatched = 0\n        self.duplicates = 0\n        self.message_port_register_in(pmt.intern(\"\
+      decoded\"))\n        self.set_msg_handler(pmt.intern(\"decoded\"), self.handle_decoded)\n\
+      \n    def work(self, input_items, output_items):\n        count = len(input_items[0])\n\
+      \        # Read tags inline, before releasing these samples to the receiver.\n\
+      \        # Keep timestamps out-of-band; sync/equalizer blocks may drop tags.\n\
+      \        with self.lock:\n            for tag in self.get_tags_in_window(0,\
+      \ 0, count):\n                if not any(pmt.eq(tag.key, pmt.intern(k)) for\
+      \ k in (\"frame_start\", \"frame_end\")):\n                    continue\n  \
+      \              if not pmt.is_dict(tag.value):\n                    continue\n\
+      \                label = pmt.dict_ref(tag.value, pmt.intern(\"frame_id\"), pmt.PMT_NIL)\n\
+      \                stamp = pmt.dict_ref(tag.value, pmt.intern(\"timestamp_ns\"\
+      ), pmt.PMT_NIL)\n                if not pmt.is_symbol(label) or not pmt.is_uint64(stamp):\n\
+      \                    continue\n                label = pmt.symbol_to_string(label)\n\
+      \                if label in self.frames:\n                    event = \"start\"\
+      \ if pmt.eq(tag.key, pmt.intern(\"frame_start\")) else \"end\"\n           \
+      \         self.frames[label].setdefault(event, pmt.to_uint64(stamp))\n     \
+      \               self.report(label)\n        output_items[0][:count] = input_items[0][:count]\n\
+      \        return count\n\n    def handle_decoded(self, message):\n        # Timestamp\
+      \ at handler entry, before matching/printing/locking.\n        completed = time.monotonic_ns()\n\
+      \        if not pmt.is_pair(message):\n            return\n        data = pmt.cdr(message)\n\
+      \        if not (pmt.is_blob(data) or pmt.is_u8vector(data)):\n            return\n\
+      \        mac = bytes(pmt.to_python(data))\n        match = self.by_payload.get(mac[24:])\
+      \ if len(mac) >= 24 else None\n        with self.lock:\n            if match\
+      \ is None or int.from_bytes(mac[22:24], \"little\") >> 4 != match[1]:\n    \
+      \            self.unmatched += 1\n                return\n            label\
+      \ = match[0]\n            frame = self.frames[label]\n            if \"done\"\
+      \ in frame:\n                self.duplicates += 1\n                return\n\
+      \            frame[\"done\"] = completed\n            self.report(label)\n\n\
+      \    def report(self, label):\n        # Called with lock held. Output delivery\
+      \ can precede the annotation's\n        # final windowing-tail tag, so retain\
+      \ completion until both tags exist.\n        frame = self.frames[label]\n  \
+      \      if frame.get(\"reported\") or not all(k in frame for k in (\"start\"\
+      , \"end\", \"done\")):\n            return\n        elapsed_ms = (frame[\"done\"\
+      ] - frame[\"start\"]) / 1e6\n        tail_ms = (frame[\"done\"] - frame[\"end\"\
+      ]) / 1e6\n        frame[\"reported\"] = True\n        self.count += 1\n    \
+      \    self.total_ms += elapsed_ms\n        print(f\"[PHY latency estimate] {label}:\
+      \ \"\n              f\"start-to-decoded={elapsed_ms:.4f} ms, \"\n          \
+      \    f\"end-to-decoded={tail_ms:.4f} ms, \"\n              f\"mean={self.total_ms\
+      \ / self.count:.4f} ms (n={self.count})\",\n              flush=True)\n\n  \
+      \  def finish(self):\n        with self.lock:\n            missing = [label\
+      \ for label, frame in self.frames.items() if not frame.get(\"reported\")]\n\
+      \            print(f\"[PHY latency summary] matched={self.count}/{len(self.frames)},\
+      \ \"\n                  f\"unmatched-output={self.unmatched}, duplicate-output={self.duplicates}\"\
+      , flush=True)\n            if missing:\n                print(\"[PHY latency\
+      \ summary] missing: \" + \", \".join(missing), flush=True)\n"
+    affinity: ''
+    alias: ''
+    comment: Input tags are matched to decoded payload IDs without PHY tag propagation.
+    maxoutbuf: '0'
+    metadata_file: file_path+"-meta"
+    minoutbuf: '0'
+  states:
+    _io_cache: ('PHY latency (payload match)', 'blk', [('metadata_file', "'../wifi_latency.sigmf-meta'")],
+      [('0', 'complex', 1), ('decoded', 'message', 1)], [('0', 'complex', 1)], 'Match
+      input boundary tags to CRC-valid decoded MAC payloads.', [])
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1840, 252.0]
     rotation: 0
     state: enabled
 - name: fft_vxx_0
@@ -964,6 +907,21 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [440, 464.0]
+    rotation: 0
+    state: enabled
+- name: latency_finish
+  id: snippet
+  parameters:
+    alias: ''
+    code: self.epy_block_latency.finish()
+    comment: Summarize matched and missing frames after all workers finish.
+    priority: '0'
+    section: main_after_stop
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [16, 744.0]
     rotation: 0
     state: enabled
 - name: mlir_aie_sigmf_tag_injector_0
@@ -1241,25 +1199,25 @@ connections:
 - [blocks_divide_xx_0, '0', ieee802_11_sync_short_0, '2']
 - [blocks_divide_xx_0, '0', qtgui_time_sink_x_0, '0']
 - [blocks_file_source_0, '0', blocks_throttle_0, '0']
-- [blocks_throttle_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
 - [blocks_moving_average_xx_0, '0', blocks_divide_xx_0, '1']
 - [blocks_moving_average_xx_1, '0', blocks_complex_to_mag_0, '0']
 - [blocks_moving_average_xx_1, '0', ieee802_11_sync_short_0, '1']
 - [blocks_multiply_xx_0, '0', blocks_moving_average_xx_1, '0']
 - [blocks_probe_rate_0, rate, blocks_message_debug_0, print]
 - [blocks_stream_to_vector_0, '0', fft_vxx_0, '0']
+- [blocks_throttle_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
+- [epy_block_latency, '0', virtual_sink_0, '0']
 - [fft_vxx_0, '0', ieee802_11_frame_equalizer_0, '0']
 - [foo_wireshark_connector_0, '0', blocks_file_sink_0, '0']
+- [ieee802_11_decode_mac_0, out, epy_block_latency, decoded]
 - [ieee802_11_decode_mac_0, out, foo_wireshark_connector_0, in]
 - [ieee802_11_decode_mac_0, out, ieee802_11_parse_mac_0, in]
-- [ieee802_11_decode_mac_0, out, epy_block_latency, decoded]
 - [ieee802_11_frame_equalizer_0, '0', ieee802_11_decode_mac_0, '0']
 - [ieee802_11_frame_equalizer_0, symbols, pdu_pdu_to_tagged_stream_0, pdus]
 - [ieee802_11_sync_long_0, '0', blocks_stream_to_vector_0, '0']
 - [ieee802_11_sync_short_0, '0', blocks_delay_0, '0']
 - [ieee802_11_sync_short_0, '0', ieee802_11_sync_long_0, '0']
 - [mlir_aie_sigmf_tag_injector_0, '0', epy_block_latency, '0']
-- [epy_block_latency, '0', virtual_sink_0, '0']
 - [pdu_pdu_to_tagged_stream_0, '0', qtgui_const_sink_x_0, '0']
 - [virtual_source_0, '0', blocks_complex_to_mag_squared_0, '0']
 - [virtual_source_0, '0', blocks_delay_0_0, '0']
