@@ -151,6 +151,50 @@ blocks:
     coordinate: [984, 288.0]
     rotation: 0
     state: enabled
+- name: epy_block_latency
+  id: epy_block
+  parameters:
+    _source_code: "from gnuradio import gr\nimport pmt\n\n\nclass blk(gr.basic_block):\n\
+      \    \"\"\"Print host-side PHY chunk-completion latency for annotated frames.\"\
+      \"\"\n\n    def __init__(self):\n        gr.basic_block.__init__(self, name=\"\
+      PHY latency\", in_sig=None, out_sig=None)\n        self.starts = {}\n      \
+      \  self.count = 0\n        self.total_ms = 0.0\n        self.message_port_register_in(pmt.intern(\"\
+      latency\"))\n        self.set_msg_handler(pmt.intern(\"latency\"), self.handle_latency)\n\
+      \n    def handle_latency(self, message):\n        if not pmt.is_pair(message):\n\
+      \            return\n        key, value = pmt.car(message), pmt.cdr(message)\n\
+      \        if not pmt.is_symbol(key) or not pmt.is_dict(value):\n            return\n\
+      \        event = pmt.symbol_to_string(key)\n        if event not in (\"frame_start\"\
+      , \"frame_end\"):\n            return\n        frame_id = pmt.dict_ref(value,\
+      \ pmt.intern(\"frame_id\"), pmt.PMT_NIL)\n        times = pmt.dict_ref(value,\
+      \ pmt.intern(\"timestamps_ns\"), pmt.PMT_NIL)\n        if not pmt.is_symbol(frame_id)\
+      \ or not pmt.is_dict(times):\n            return\n        start = pmt.dict_ref(times,\
+      \ pmt.intern(\"phy_start\"), pmt.PMT_NIL)\n        end = pmt.dict_ref(times,\
+      \ pmt.intern(\"phy_end\"), pmt.PMT_NIL)\n        if not pmt.is_uint64(start)\
+      \ or not pmt.is_uint64(end):\n            return\n        frame_id = pmt.symbol_to_string(frame_id)\n\
+      \        start, end = pmt.to_uint64(start), pmt.to_uint64(end)\n        if event\
+      \ == \"frame_start\":\n            self.starts[frame_id] = start\n         \
+      \   return\n        first = self.starts.pop(frame_id, None)\n        if first\
+      \ is None or end < start or end < first:\n            return\n        elapsed_ms\
+      \ = (end - first) / 1e6\n        tail_ms = (end - start) / 1e6\n        self.count\
+      \ += 1\n        self.total_ms += elapsed_ms\n        print(f\"[PHY latency estimate]\
+      \ {frame_id}: \"\n              f\"start-to-completion={elapsed_ms:.4f} ms,\
+      \ \"\n              f\"end-to-completion={tail_ms:.4f} ms, \"\n            \
+      \  f\"mean={self.total_ms / self.count:.4f} ms (n={self.count})\",\n       \
+      \       flush=True)\n"
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    _io_cache: ('PHY latency', 'blk', [], [('latency', 'message', 1)], [], 'Print
+      host-side PHY chunk-completion latency for annotated frames.', [])
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [872, 384.0]
+    rotation: 0
+    state: enabled
 - name: foo_wireshark_connector_0
   id: foo_wireshark_connector
   parameters:
@@ -217,66 +261,6 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [304, 356.0]
-    rotation: 0
-    state: enabled
-- name: epy_block_latency
-  id: epy_block
-  parameters:
-    _source_code: |
-      from gnuradio import gr
-      import pmt
-
-
-      class blk(gr.basic_block):
-          """Print host-side PHY chunk-completion latency for annotated frames."""
-
-          def __init__(self):
-              gr.basic_block.__init__(self, name="PHY latency", in_sig=None, out_sig=None)
-              self.starts = {}
-              self.count = 0
-              self.total_ms = 0.0
-              self.message_port_register_in(pmt.intern("latency"))
-              self.set_msg_handler(pmt.intern("latency"), self.handle_latency)
-
-          def handle_latency(self, message):
-              if not pmt.is_pair(message):
-                  return
-              key, value = pmt.car(message), pmt.cdr(message)
-              if not pmt.is_symbol(key) or not pmt.is_dict(value):
-                  return
-              event = pmt.symbol_to_string(key)
-              if event not in ("frame_start", "frame_end"):
-                  return
-              frame_id = pmt.dict_ref(value, pmt.intern("frame_id"), pmt.PMT_NIL)
-              times = pmt.dict_ref(value, pmt.intern("timestamps_ns"), pmt.PMT_NIL)
-              if not pmt.is_symbol(frame_id) or not pmt.is_dict(times):
-                  return
-              start = pmt.dict_ref(times, pmt.intern("phy_start"), pmt.PMT_NIL)
-              end = pmt.dict_ref(times, pmt.intern("phy_end"), pmt.PMT_NIL)
-              if not pmt.is_uint64(start) or not pmt.is_uint64(end):
-                  return
-              frame_id = pmt.symbol_to_string(frame_id)
-              start, end = pmt.to_uint64(start), pmt.to_uint64(end)
-              if event == "frame_start":
-                  self.starts[frame_id] = start
-                  return
-              first = self.starts.pop(frame_id, None)
-              if first is None or end < start or end < first:
-                  return
-              elapsed_ms = (end - first) / 1e6
-              tail_ms = (end - start) / 1e6
-              self.count += 1
-              self.total_ms += elapsed_ms
-              print(f"[PHY latency estimate] {frame_id}: "
-                    f"start-to-completion={elapsed_ms:.3f} ms, "
-                    f"end-to-completion={tail_ms:.3f} ms, "
-                    f"mean={self.total_ms / self.count:.3f} ms (n={self.count})",
-                    flush=True)
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [776, 364.0]
     rotation: 0
     state: enabled
 - name: mlir_aie_mlir_aie_80211_phy_0
