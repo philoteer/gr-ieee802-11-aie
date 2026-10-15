@@ -130,7 +130,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [824, 108.0]
+    coordinate: [640, 92.0]
     rotation: 0
     state: enabled
 - name: blocks_stream_to_vector_0
@@ -149,6 +149,27 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [984, 288.0]
+    rotation: 0
+    state: enabled
+- name: blocks_throttle_0
+  id: blocks_throttle2
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: Pace IQ before timestamping; release at most 1024 samples per call.
+    ignoretag: 'True'
+    limit: items
+    maximum: '1024'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    samples_per_second: samp_rate
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [848, 132.0]
     rotation: 0
     state: enabled
 - name: epy_block_latency
@@ -333,8 +354,9 @@ blocks:
     state: enabled
 
 connections:
-- [blocks_file_source_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
+- [blocks_file_source_0, '0', blocks_throttle_0, '0']
 - [blocks_stream_to_vector_0, '0', ieee802_11_decode_mac_0, '0']
+- [blocks_throttle_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
 - [foo_wireshark_connector_0, '0', blocks_file_sink_0, '0']
 - [ieee802_11_decode_mac_0, out, foo_wireshark_connector_0, in]
 - [mlir_aie_complex64_to_cint16_0, '0', mlir_aie_latency_tag_updater_0, '0']
