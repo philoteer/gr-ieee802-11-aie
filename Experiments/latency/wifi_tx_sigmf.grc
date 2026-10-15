@@ -1,0 +1,352 @@
+options:
+  parameters:
+    author: ''
+    catch_exceptions: 'False'
+    category: Custom
+    description: Sample-exact, clean Wi-Fi latency fixture based on wifi_tx.grc
+    generate_options: no_gui
+    hier_block_src_path: '.:'
+    id: wifi_tx_sigmf
+    output_language: python
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: run
+    title: Wi-Fi latency SigMF generator
+  states:
+    coordinate: [8, 8]
+    state: enabled
+
+blocks:
+- name: samp_rate
+  id: variable
+  parameters:
+    value: '20000000'
+  states:
+    coordinate: [200, 8]
+    state: enabled
+- name: freq
+  id: variable
+  parameters:
+    value: '5180000000'
+  states:
+    coordinate: [360, 8]
+    state: enabled
+- name: frame_count
+  id: variable
+  parameters:
+    value: '20'
+  states:
+    coordinate: [520, 8]
+    state: enabled
+- name: first_sample
+  id: variable
+  parameters:
+    value: '100000'
+  states:
+    coordinate: [680, 8]
+    state: enabled
+- name: frame_spacing
+  id: variable
+  parameters:
+    value: '100000'
+  states:
+    coordinate: [840, 8]
+    state: enabled
+- name: tail_samples
+  id: variable
+  parameters:
+    value: '100000'
+  states:
+    coordinate: [1000, 8]
+    state: enabled
+- name: pdu_length
+  id: variable
+  parameters:
+    value: '256'
+  states:
+    coordinate: [200, 88]
+    state: enabled
+- name: output_base
+  id: variable
+  parameters:
+    value: '"wifi_latency"'
+  states:
+    coordinate: [360, 88]
+    state: enabled
+- name: noise_std
+  id: variable
+  parameters:
+    value: '0.003'
+  states:
+    coordinate: [520, 88]
+    state: enabled
+- name: noise_seed
+  id: variable
+  parameters:
+    value: '0'
+  states:
+    coordinate: [680, 88]
+    state: enabled
+- name: tx_scale
+  id: variable
+  parameters:
+    value: '0.2'
+  states:
+    coordinate: [840, 88]
+    state: enabled
+- name: blocks_vector_source_x_0
+  id: blocks_vector_source_x
+  parameters:
+    repeat: 'False'
+    tags: '[]'
+    type: complex
+    vector: (0,)
+    vlen: '1'
+  states:
+    coordinate: [200, 216]
+    state: enabled
+- name: ieee802_11_mac_0
+  id: ieee802_11_mac
+  parameters:
+    bss_mac: '[0xff, 0xff, 0xff, 0xff, 0xff, 0xff]'
+    dst_mac: '[0x42, 0x42, 0x42, 0x42, 0x42, 0x42]'
+    src_mac: '[0x23, 0x23, 0x23, 0x23, 0x23, 0x23]'
+  states:
+    coordinate: [480, 344]
+    state: enabled
+- name: wifi_phy_hier_0
+  id: wifi_phy_hier
+  parameters:
+    bandwidth: samp_rate
+    chan_est: ieee802_11.LS
+    encoding: ieee802_11.Encoding(0)
+    frequency: freq
+    sensitivity: '0.56'
+  states:
+    coordinate: [480, 200]
+    state: enabled
+- name: epy_block_recorder
+  id: epy_block
+  parameters:
+    _source_code: |
+      import hashlib
+      import json
+      from pathlib import Path
+      import threading
+
+      import numpy as np
+      import pmt
+      from gnuradio import gr
+
+
+      class blk(gr.sync_block):
+          """Send finite MAC payloads; place tagged PHY bursts at exact file offsets."""
+
+          def __init__(self, output_base="wifi_latency", samp_rate=20000000,
+                       frequency=5180000000, frame_count=20, first_sample=100000,
+                       frame_spacing=100000, tail_samples=100000, pdu_length=256,
+                       noise_std=0.003, noise_seed=0, tx_scale=0.2):
+              gr.sync_block.__init__(self, name="Scheduled SigMF recorder",
+                                     in_sig=[np.complex64], out_sig=None)
+              self.base = Path(output_base).expanduser()
+              self.rate = float(samp_rate)
+              self.frequency = float(frequency)
+              self.count = int(frame_count)
+              self.first = int(first_sample)
+              self.spacing = int(frame_spacing)
+              self.tail = int(tail_samples)
+              self.payload_length = int(pdu_length)
+              self.noise_std = float(noise_std)
+              self.noise_seed = int(noise_seed)
+              self.scale = float(tx_scale)
+              if not np.isfinite(self.scale) or self.scale <= 0:
+                  raise ValueError("tx_scale must be positive and finite")
+              if not np.isfinite(self.noise_std) or self.noise_std < 0 or self.noise_seed < 0:
+                  raise ValueError("noise_std and noise_seed must be nonnegative")
+              if not np.isfinite(self.rate) or self.rate <= 0:
+                  raise ValueError("samp_rate must be positive and finite")
+              if not np.isfinite(self.frequency):
+                  raise ValueError("frequency must be finite")
+              if self.count < 1 or self.first < 0 or self.spacing < 1 or self.tail < 0:
+                  raise ValueError("Invalid frame count, start, spacing or tail")
+              if not 32 <= self.payload_length <= 1500:
+                  raise ValueError("pdu_length must be between 32 and 1500 bytes")
+              # BPSK 1/2: 24 data bits/symbol; MAC adds 24 header + 4 FCS bytes.
+              # Five preamble/SIGNAL symbols, 80 samples each, plus rolloff tail.
+              symbols = (16 + 8 * (self.payload_length + 28) + 6 + 23) // 24
+              if 80 * (5 + symbols) + 1 > self.spacing:
+                  raise ValueError("frame_spacing is too short for this payload")
+              self.key = pmt.intern("packet_len")
+              self.message_port_register_out(pmt.intern("payload"))
+              self.completed = threading.Event()
+              self.error = None
+              self.file = None
+
+          def payload(self, index):
+              prefix = ("WIFI-LATENCY:%08d:" % index).encode("ascii")
+              return prefix + b"x" * (self.payload_length - len(prefix))
+
+          def start(self):
+              self.completed.clear()
+              self.error = None
+              self.annotations = []
+              self.position = 0
+              self.remaining = 0
+              self.next_input = 0
+              self.digest = hashlib.sha512()
+              self.rng = np.random.default_rng(self.noise_seed)
+              self.base.parent.mkdir(parents=True, exist_ok=True)
+              # Remove stale metadata so a failed run cannot look complete.
+              self.base.with_suffix(".sigmf-meta").unlink(missing_ok=True)
+              self.file = self.base.with_suffix(".sigmf-data").open("wb")
+              for index in range(self.count):
+                  self.message_port_pub(pmt.intern("payload"),
+                                        pmt.intern(self.payload(index).decode("ascii")))
+              return True
+
+          def write(self, samples):
+              # Interleaved I/Q draws keep the noise independent of scheduler chunking.
+              if self.noise_std:
+                  noise = self.rng.standard_normal((len(samples), 2)).astype(np.float32)
+                  samples = samples + np.float32(self.noise_std) * (noise[:, 0] + 1j * noise[:, 1])
+              data = np.asarray(samples, dtype="<c8").tobytes()
+              self.file.write(data)
+              self.digest.update(data)
+              self.position += len(samples)
+
+          def zeros(self, count):
+              while count:
+                  chunk = min(count, 65536)
+                  self.write(np.zeros(chunk, dtype=np.complex64))
+                  count -= chunk
+
+          def finish(self):
+              self.zeros(self.tail)
+              self.file.close()
+              self.file = None
+              metadata = {
+                  "global": {
+                      "core:datatype": "cf32_le",
+                      "core:sample_rate": self.rate,
+                      "core:num_channels": 1,
+                      "core:version": "1.2.0",
+                      "core:sha512": self.digest.hexdigest(),
+                      "core:recorder": "wifi_tx_sigmf.grc (GNU Radio)",
+                      "core:description": (
+                          "Legacy OFDM Wi-Fi, BPSK 1/2. "
+                          "Frame i begins at first_sample + i * frame_spacing. "
+                          "Annotations include the PHY windowing tail. "
+                          "No frequency offset, multipath or sample-rate error. "
+                          "Seeded Gaussian noise on all samples: std=%g per I/Q, seed=%d. "
+                          "first_sample=%d, frame_spacing=%d, tail_samples=%d, tx_scale=%g." %
+                          (self.noise_std, self.noise_seed, self.first, self.spacing, self.tail, self.scale))
+                  },
+                  "captures": [{"core:sample_start": 0,
+                                "core:frequency": self.frequency}],
+                  "annotations": self.annotations
+              }
+              path = self.base.with_suffix(".sigmf-meta")
+              path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+              print("Wrote %d frames, %d complex samples to %s" %
+                    (self.count, self.position, self.base.with_suffix(".sigmf-data")))
+              self.completed.set()
+
+          def work(self, input_items, output_items):
+              samples = input_items[0]
+              if self.completed.is_set():
+                  return len(samples)
+              try:
+                  begin = self.nitems_read(0)
+                  tags = {int(t.offset): int(pmt.to_long(t.value)) for t in
+                          self.get_tags_in_window(0, 0, len(samples), self.key)}
+                  offset = 0
+                  while offset < len(samples):
+                      absolute = begin + offset
+                      if not self.remaining:
+                          if absolute != self.next_input or absolute not in tags:
+                              raise RuntimeError("Missing packet_len at PHY burst boundary")
+                          length = tags[absolute]
+                          if length <= 0 or length > self.spacing:
+                              raise RuntimeError("Invalid or overlapping PHY burst length")
+                          index = len(self.annotations)
+                          target = self.first + index * self.spacing
+                          self.zeros(target - self.position)
+                          self.annotations.append({
+                              "core:sample_start": target,
+                              "core:sample_count": length,
+                              "core:label": "wifi-frame-%08d" % index,
+                              "core:comment": json.dumps({
+                                  "frame_id": index,
+                                  "payload_ascii": self.payload(index).decode("ascii"),
+                                  "payload_bytes": self.payload_length,
+                                  "psdu_bytes": self.payload_length + 28,
+                                  "encoding": "BPSK 1/2",
+                                  "mac_sequence_number": index % 4096,
+                                  "start_seconds": target / self.rate,
+                                  "end_seconds": (target + length) / self.rate
+                              }, sort_keys=True)
+                          })
+                          self.remaining = length
+                          self.next_input += length
+                      size = min(self.remaining, len(samples) - offset)
+                      self.write(samples[offset:offset + size] * np.float32(self.scale))
+                      self.remaining -= size
+                      offset += size
+                      if not self.remaining and len(self.annotations) == self.count:
+                          self.finish()
+                          break
+                  return len(samples)
+              except Exception as error:
+                  self.error = error
+                  self.completed.set()
+                  return -1
+
+          def wait_for_completion(self, timeout=60):
+              if not self.completed.wait(timeout):
+                  raise RuntimeError("Timed out waiting for Wi-Fi PHY bursts")
+              if self.error is not None:
+                  raise RuntimeError("SigMF generation failed") from self.error
+
+          def stop(self):
+              if self.file is not None:
+                  self.file.close()
+                  self.file = None
+              return True
+    output_base: output_base
+    samp_rate: samp_rate
+    frequency: freq
+    frame_count: frame_count
+    first_sample: first_sample
+    frame_spacing: frame_spacing
+    tail_samples: tail_samples
+    pdu_length: pdu_length
+    noise_std: noise_std
+    noise_seed: noise_seed
+    tx_scale: tx_scale
+  states:
+    coordinate: [816, 216]
+    state: enabled
+- name: finish_generation
+  id: snippet
+  parameters:
+    section: main_after_start
+    priority: '0'
+    code: |
+      try:
+          self.epy_block_recorder.wait_for_completion()
+      finally:
+          self.stop()
+          self.wait()
+  states:
+    coordinate: [816, 384]
+    state: enabled
+
+connections:
+- [blocks_vector_source_x_0, '0', wifi_phy_hier_0, '0']
+- [epy_block_recorder, payload, ieee802_11_mac_0, app in]
+- [ieee802_11_mac_0, phy out, wifi_phy_hier_0, mac_in]
+- [wifi_phy_hier_0, '0', epy_block_recorder, '0']
+
+metadata:
+  file_format: 1
+  grc_version: 3.10.9.2

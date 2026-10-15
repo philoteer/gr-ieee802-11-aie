@@ -1,0 +1,316 @@
+options:
+  parameters:
+    catch_exceptions: 'False'
+    category: Custom
+    description: Verify one SigMF fixture through both CPU receivers and the baseline LS NPU
+    generate_options: no_gui
+    hier_block_src_path: '.:'
+    id: wifi_rx_compat
+    output_language: python
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: run
+    title: Wi-Fi receiver compatibility check
+  states:
+    coordinate: [8, 8]
+    state: enabled
+blocks:
+- name: capture_base
+  id: parameter
+  parameters:
+    label: Capture basename
+    short_id: ''
+    type: str
+    value: '"wifi_latency"'
+  states:
+    coordinate: [200, 8]
+    state: enabled
+- name: kernel_dir
+  id: parameter
+  parameters:
+    label: Baseline LS NPU build directory
+    short_id: ''
+    type: str
+    value: '"../../base/kernel/build"'
+  states:
+    coordinate: [440, 8]
+    state: enabled
+- name: blocks_file_source_0
+  id: blocks_file_source
+  parameters:
+    begin_tag: pmt.PMT_NIL
+    file: capture_base + ".sigmf-data"
+    length: '0'
+    offset: '0'
+    repeat: 'False'
+    type: complex
+    vlen: '1'
+  states:
+    coordinate: [24, 216]
+    state: enabled
+- name: wifi_phy_hier_0
+  id: wifi_phy_hier
+  parameters:
+    bandwidth: '20000000'
+    chan_est: ieee802_11.LS
+    encoding: ieee802_11.Encoding(0)
+    frequency: '5180000000'
+    sensitivity: '0.56'
+  states:
+    coordinate: [304, 168]
+    state: enabled
+- name: blocks_null_sink_0
+  id: blocks_null_sink
+  parameters:
+    type: complex
+    vlen: '1'
+  states:
+    coordinate: [576, 168]
+    state: enabled
+- name: presiso_0
+  id: presiso
+  parameters: {}
+  states:
+    coordinate: [304, 360]
+    state: enabled
+- name: ieee80211_trigger_0
+  id: ieee80211_trigger
+  parameters: {}
+  states:
+    coordinate: [520, 360]
+    state: enabled
+- name: ieee80211_sync_0
+  id: ieee80211_sync
+  parameters: {}
+  states:
+    coordinate: [696, 360]
+    state: enabled
+- name: ieee80211_signal_0
+  id: ieee80211_signal
+  parameters: {}
+  states:
+    coordinate: [872, 360]
+    state: enabled
+- name: ieee80211_demod_0
+  id: ieee80211_demod
+  parameters:
+    mupos: '0'
+    mugid: '2'
+  states:
+    coordinate: [1048, 360]
+    state: enabled
+- name: ieee80211_decode_0
+  id: ieee80211_decode
+  parameters:
+    ifdebug: 'False'
+  states:
+    coordinate: [1224, 360]
+    state: enabled
+- name: mlir_aie_complex64_to_cint16_0
+  id: mlir_aie_complex64_to_cint16
+  parameters:
+    safe: 'False'
+  states:
+    coordinate: [304, 552]
+    state: enabled
+- name: mlir_aie_mlir_aie_80211_phy_0
+  id: mlir_aie_mlir_aie_80211_phy
+  parameters:
+    path_xclbin: kernel_dir + "/final.xclbin"
+    path_insts_bin: kernel_dir + "/insts.bin"
+    kernel_name: MLIR_AIE
+    VECTOR_SIZE: '16384'
+    nominal_frequency: '5180000000'
+    num_slots: '2'
+    N_TILES: '16'
+    weights_path: "''"
+  states:
+    coordinate: [576, 528]
+    state: enabled
+- name: blocks_stream_to_vector_0
+  id: blocks_stream_to_vector
+  parameters:
+    type: byte
+    num_items: '48'
+  states:
+    coordinate: [872, 552]
+    state: enabled
+- name: ieee802_11_decode_mac_0
+  id: ieee802_11_decode_mac
+  parameters:
+    log: 'False'
+    debug: 'False'
+  states:
+    coordinate: [1080, 552]
+    state: enabled
+- name: epy_block_verify
+  id: epy_block
+  parameters:
+    _source_code: |
+      import hashlib
+      import json
+      from pathlib import Path
+      import threading
+      import zlib
+
+      import numpy as np
+      import pmt
+      from gnuradio import gr
+
+
+      class blk(gr.basic_block):
+          """Check full payloads and frame IDs from three independent receive chains."""
+
+          def __init__(self, capture_base="wifi_latency", kernel_dir="../../base/kernel/build"):
+              gr.basic_block.__init__(self, name="Verify three receiver outputs",
+                                      in_sig=None, out_sig=None)
+              self.base = Path(capture_base)
+              self.kernel = Path(kernel_dir)
+              self.done = threading.Event()
+              self.lock = threading.Lock()
+              self.names = ("gr-ieee802-11", "gr-ieee80211", "NPU-base-LS")
+              handlers = (self.handle_legacy, self.handle_grwifi, self.handle_npu)
+              for name, handler in zip(self.names, handlers):
+                  self.message_port_register_in(pmt.intern(name))
+                  self.set_msg_handler(pmt.intern(name), handler)
+
+          def handle_legacy(self, message):
+              self.handle("gr-ieee802-11", message)
+
+          def handle_grwifi(self, message):
+              self.handle("gr-ieee80211", message)
+
+          def handle_npu(self, message):
+              self.handle("NPU-base-LS", message)
+
+          def prepare(self):
+              self.done.clear()
+              self.error = None
+              self.frames = {name: [] for name in self.names}
+              self.metadata = json.loads(self.base.with_suffix(".sigmf-meta").read_text())
+              if self.metadata["global"]["core:sample_rate"] != 20000000:
+                  raise ValueError("Compatibility check requires 20 MHz I/Q")
+              if self.metadata["captures"][0]["core:frequency"] != 5180000000:
+                  raise ValueError("Compatibility check uses channel 36 (5.18 GHz)")
+              data = self.base.with_suffix(".sigmf-data").read_bytes()
+              if hashlib.sha512(data).hexdigest() != self.metadata["global"]["core:sha512"]:
+                  raise ValueError("SigMF checksum mismatch")
+              samples = np.frombuffer(data, dtype="<c8")
+              self.peak = float(max(np.max(np.abs(samples.real)), np.max(np.abs(samples.imag))))
+              if not np.isfinite(samples).all() or self.peak >= 1.0:
+                  raise ValueError("I/Q does not fit the NPU's unclipped Q15 input range")
+              self.expected = []
+              previous_end = 0
+              for annotation in self.metadata["annotations"]:
+                  start = annotation["core:sample_start"]
+                  end = start + annotation["core:sample_count"]
+                  if start < previous_end or end > len(samples):
+                      raise ValueError("Invalid annotated frame interval")
+                  self.expected.append(json.loads(annotation["core:comment"]))
+                  previous_end = end
+              if not self.expected:
+                  raise ValueError("No expected frames")
+              self.image_hash = hashlib.sha256((self.kernel / "final.xclbin").read_bytes()).hexdigest()
+              self.insts_hash = hashlib.sha256((self.kernel / "insts.bin").read_bytes()).hexdigest()
+
+          def handle(self, name, message):
+              with self.lock:
+                  try:
+                      raw = bytes(pmt.to_python(pmt.cdr(message)))
+                      # GR-WiFi wraps PSDU+FCS in format/u16-length/.../MCS.
+                      # gr-ieee802-11 and the NPU's decode_mac strip the FCS.
+                      if name == "gr-ieee80211":
+                          length = int.from_bytes(raw[1:3], "little")
+                          if len(raw) != length + 4:
+                              raise ValueError("Invalid GR-WiFi packet envelope")
+                          psdu = raw[3:3 + length]
+                          if zlib.crc32(psdu) != 0x2144df1c:
+                              raise ValueError("GR-WiFi PSDU FCS mismatch")
+                          mac = psdu[:-4]
+                      else:
+                          mac = raw
+                      index = len(self.frames[name])
+                      expected = self.expected[index]
+                      if mac[24:] != expected["payload_ascii"].encode("ascii"):
+                          raise ValueError("Payload mismatch for %s frame %d" % (name, index))
+                      if int.from_bytes(mac[22:24], "little") >> 4 != expected["mac_sequence_number"]:
+                          raise ValueError("MAC sequence number mismatch")
+                      self.frames[name].append(expected["frame_id"])
+                      if all(len(ids) == len(self.expected) for ids in self.frames.values()):
+                          self.done.set()
+                  except Exception as error:
+                      self.error = error
+                      self.done.set()
+
+          def wait_for_completion(self, timeout=60):
+              finished = self.done.wait(timeout)
+              report = {
+                  "sample_rate": 20000000,
+                  "frequency": 5180000000,
+                  "expected_frames": len(self.expected),
+                  "decoded_frame_ids": self.frames,
+                  "peak_iq_component": self.peak,
+                  "npu_configuration": "base LS, 16384 samples/batch, 16 tiles, 2 slots",
+                  "npu_xclbin_sha256": self.image_hash,
+                  "npu_insts_sha256": self.insts_hash,
+                  "capture_sha512": self.metadata["global"]["core:sha512"],
+                  "passed": finished and self.error is None
+              }
+              Path("compat_report.json").write_text(json.dumps(report, indent=2) + "\n")
+              if self.error:
+                  raise RuntimeError("Receiver compatibility check failed") from self.error
+              if not finished:
+                  raise RuntimeError("Timed out: decoded frame IDs %r" % self.frames)
+              for name in self.names:
+                  print("PASS %s: %d/%d CRC-checked payloads" %
+                        (name, len(self.frames[name]), len(self.expected)))
+    capture_base: capture_base
+    kernel_dir: kernel_dir
+  states:
+    coordinate: [1456, 344]
+    state: enabled
+- name: prepare_check
+  id: snippet
+  parameters:
+    section: main_after_init
+    priority: '0'
+    code: self.epy_block_verify.prepare()
+  states:
+    coordinate: [864, 8]
+    state: enabled
+- name: finish_check
+  id: snippet
+  parameters:
+    section: main_after_start
+    priority: '0'
+    code: |
+      try:
+          self.epy_block_verify.wait_for_completion()
+      finally:
+          self.stop()
+          self.wait()
+  states:
+    coordinate: [1080, 8]
+    state: enabled
+connections:
+- [blocks_file_source_0, '0', wifi_phy_hier_0, '0']
+- [wifi_phy_hier_0, '0', blocks_null_sink_0, '0']
+- [wifi_phy_hier_0, mac_out, epy_block_verify, gr-ieee802-11]
+- [blocks_file_source_0, '0', presiso_0, '0']
+- [blocks_file_source_0, '0', ieee80211_sync_0, '2']
+- [blocks_file_source_0, '0', ieee80211_signal_0, '1']
+- [presiso_0, '0', ieee80211_trigger_0, '0']
+- [presiso_0, '1', ieee80211_sync_0, '1']
+- [ieee80211_trigger_0, '0', ieee80211_sync_0, '0']
+- [ieee80211_sync_0, '0', ieee80211_signal_0, '0']
+- [ieee80211_signal_0, '0', ieee80211_demod_0, '0']
+- [ieee80211_demod_0, '0', ieee80211_decode_0, '0']
+- [ieee80211_decode_0, out, epy_block_verify, gr-ieee80211]
+- [blocks_file_source_0, '0', mlir_aie_complex64_to_cint16_0, '0']
+- [mlir_aie_complex64_to_cint16_0, '0', mlir_aie_mlir_aie_80211_phy_0, '0']
+- [mlir_aie_mlir_aie_80211_phy_0, '0', blocks_stream_to_vector_0, '0']
+- [blocks_stream_to_vector_0, '0', ieee802_11_decode_mac_0, '0']
+- [ieee802_11_decode_mac_0, out, epy_block_verify, NPU-base-LS]
+metadata:
+  file_format: 1
+  grc_version: 3.10.9.2
