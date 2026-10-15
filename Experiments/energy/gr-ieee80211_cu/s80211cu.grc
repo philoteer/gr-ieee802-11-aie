@@ -6,7 +6,7 @@ options:
     cmake_opt: ''
     comment: ''
     copyright: ''
-    description: CPU and NVIDIA GPU energy measurement on the 20 MHz stress-test capture.
+    description: CPU and NVIDIA GPU energy measurement for the CUDA Wi-Fi receiver.
     gen_cmake: 'On'
     gen_linking: dynamic
     generate_options: no_gui
@@ -22,7 +22,7 @@ options:
     run_options: run
     sizing_mode: fixed
     thread_safe_setters: ''
-    title: GR-WiFi Energy Experiment
+    title: GR-WiFi CUDA Energy Experiment
     window_size: (1000,1000)
   states:
     bus_sink: false
@@ -202,18 +202,30 @@ blocks:
   id: snippet
   parameters:
     alias: ''
-    code: "import time\nprogress = [None, time.monotonic()]\n\ndef finish_at_eof():\n\
-      \    # The installed demodulator can stall on an incomplete final frame.\n \
-      \   # Wait for all IQ/signal processing to finish, then allow decoding\n   \
-      \ # to drain until its native counters have been idle for two seconds.\n   \
-      \ if not all(block.detail().done() for block in (\n            self.blocks_interleaved_short_to_complex_0,\n\
-      \            self.ieee80211_trigger_0, self.ieee80211_sync_0,\n            self.ieee80211_signal_0)):\n\
-      \        return\n    counters = (self.ieee80211_demod_0.nitems_read(0),\n  \
-      \              self.ieee80211_demod_0.nitems_written(0),\n                self.ieee80211_decode_0.nitems_read(0))\n\
-      \    now = time.monotonic()\n    if counters != progress[0]:\n        progress[:]\
-      \ = [counters, now]\n    elif now - progress[1] >= 2.0:\n        self.stop()\n\
-      \nself.epy_block_energy_logger.start_monitoring(\n    lambda: self.blocks_interleaved_short_to_complex_0.nitems_written(0),\n\
-      \    finish_at_eof)\n"
+    code: |
+      import time
+      progress = [None, time.monotonic()]
+
+      def finish_at_eof():
+          # CUDA demodcu is a stream sink that also decodes and emits PDUs.
+          # It has no stream output counter or separate decoder block.
+          # Allow it to drain after upstream completion; an incomplete final
+          # frame can leave the native block waiting indefinitely at EOF.
+          if not all(block.detail().done() for block in (
+                  self.blocks_interleaved_short_to_complex_0,
+                  self.ieee80211_trigger_0_0, self.ieee80211_sync_0_0,
+                  self.ieee80211_signal_0_0)):
+              return
+          counter = self.ieee80211cu_demodcu_0.nitems_read(0)
+          now = time.monotonic()
+          if counter != progress[0]:
+              progress[:] = [counter, now]
+          elif now - progress[1] >= 2.0:
+              self.stop()
+
+      self.epy_block_energy_logger.start_monitoring(
+          lambda: self.blocks_interleaved_short_to_complex_0.nitems_written(0),
+          finish_at_eof)
     comment: ''
     priority: '0'
     section: main_after_start
@@ -334,7 +346,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: No stream ports; RAPL CPU energy and NVML GPU power at 0.5 s intervals.
-    csv_path: data_dir + "/tmp_out/gr_ieee80211_energy.csv"
+    csv_path: data_dir + "/tmp_out/gr_ieee80211cu_energy.csv"
     gpu_index: '0'
     interval: '0.5'
     maxoutbuf: '0'
@@ -416,6 +428,17 @@ blocks:
     coordinate: [1264, 200.0]
     rotation: 0
     state: true
+- name: import_local_cuda
+  id: import
+  parameters:
+    imports: |
+      from ctypes import CDLL, RTLD_GLOBAL
+      # Load the patched user-local runtime before importing ieee80211cu bindings.
+      CDLL("/home/piloteer/git/gr-ieee80211cu/build/lib/libgnuradio-ieee80211cu.so", mode=RTLD_GLOBAL)
+  states:
+    coordinate: [16, 760]
+    rotation: 0
+    state: enabled
 - name: network_socket_pdu_0
   id: network_socket_pdu
   parameters:

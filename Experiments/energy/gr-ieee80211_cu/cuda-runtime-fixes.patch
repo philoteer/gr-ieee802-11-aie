@@ -1,0 +1,35 @@
+diff --git a/lib/CMakeLists.txt b/lib/CMakeLists.txt
+--- a/lib/CMakeLists.txt
++++ b/lib/CMakeLists.txt
+@@ -30,6 +30,7 @@ target_include_directories(gnuradio-cloud-cu
+     ${CUDA_INCLUDE_DIRS} 
+ )
+ include_directories(cuda_helpers ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
++target_link_libraries(gnuradio-cloud-cu PUBLIC CUDA::cufft)
+ 
+ ########################################################################
+ list(APPEND ieee80211cu_sources
+diff --git a/lib/preproccu_impl.cc b/lib/preproccu_impl.cc
+--- a/lib/preproccu_impl.cc
++++ b/lib/preproccu_impl.cc
+@@ -52,7 +52,8 @@ namespace gr {
+     void
+     preproccu_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
+     {
+-      ninput_items_required[0] = noutput_items + PREPROC_MIN;
++      // Each output needs 64 samples of lookahead, including at EOF.
++      ninput_items_required[0] = std::min(noutput_items, PREPROC_MAX - 65) + 64;
+     }
+ 
+     int
+@@ -65,7 +66,9 @@ namespace gr {
+       float* outAc = static_cast<float*>(output_items[0]);
+       gr_complex* outConj = static_cast<gr_complex*>(output_items[1]);
+ 
+-      int nGen = std::min(noutput_items, std::min(ninput_items[0], ninput_items[1]));
++      // There is one input and two outputs: ninput_items[1] is out of bounds.
++      // Keep each batch within the CUDA helper's strict n < PREPROC_MAX limit.
++      int nGen = std::min(noutput_items + 64, std::min(ninput_items[0], PREPROC_MAX - 1));
+ 
+       if(nGen > 64 && nGen < PREPROC_MAX)
+       {
