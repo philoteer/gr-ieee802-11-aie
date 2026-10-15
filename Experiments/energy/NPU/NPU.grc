@@ -58,7 +58,7 @@ blocks:
     bus_structure: null
     coordinate: [664, 12.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: file_path
   id: variable
   parameters:
@@ -70,7 +70,7 @@ blocks:
     bus_structure: null
     coordinate: [816, 12.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: file_path
   id: variable
   parameters:
