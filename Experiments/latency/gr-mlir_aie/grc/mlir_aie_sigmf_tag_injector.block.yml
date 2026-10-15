@@ -1,0 +1,53 @@
+id: mlir_aie_sigmf_tag_injector
+label: SigMF Tag Injector
+category: '[mlir_aie]'
+
+templates:
+  imports: from gnuradio import mlir_aie
+  make: mlir_aie.sigmf_tag_injector(${metadata_file}, ${type.size}, ${tag_key}, ${start_sample})
+
+parameters:
+- id: metadata_file
+  label: SigMF Metadata File
+  dtype: file_open
+- id: type
+  label: Sample Type
+  dtype: enum
+  default: complex
+  options: [complex, float, int, short, byte]
+  option_labels: [Complex Float32, Float32, Int32 (packed ci16), Int16, Byte]
+  option_attributes:
+    size: [8, 4, 4, 2, 1]
+- id: tag_key
+  label: Frequency Tag Key
+  dtype: string
+  default: rx_freq
+- id: start_sample
+  label: Starting Sample Offset
+  dtype: int
+  default: 0
+
+inputs:
+- domain: stream
+  dtype: ${type}
+
+outputs:
+- domain: stream
+  dtype: ${type}
+
+asserts:
+- ${start_sample >= 0}
+
+documentation: |-
+  Passes samples and existing tags through unchanged, adding frequency tags
+  from captures/core:frequency at captures/core:sample_start. Values are PMT
+  doubles in Hz. Emits the first known frequency, then only frequency changes.
+  One stream item must represent one complete SigMF sample, including I and Q.
+  For ci16_le files, use an Int32 File Source and Int32 (packed ci16), or place
+  this block after cint16_to_complex64 and select Complex Float32.
+  Set Starting Sample Offset to the File Source's initial offset (in samples).
+  The active frequency at that offset is tagged at output sample zero.
+  Metadata is loaded at construction; disable File Source repeat and do not
+  seek during playback. Sample rate, timestamps and annotations are ignored.
+
+file_format: 1
