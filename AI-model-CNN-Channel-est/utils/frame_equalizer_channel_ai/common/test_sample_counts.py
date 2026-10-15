@@ -18,7 +18,7 @@ def test_counts_match_prepared_examples(monkeypatch, target_mode):
     monkeypatch.setattr(sample_counts, 'load_splits',
                         lambda *args, **kwargs: ({name: frames for name in ('train', 'val', 'test')},
                                                  {name: {} for name in ('train', 'val', 'test')}))
-    header = Path(__file__).resolve().parents[3] / 'kernel/channel_estimator/model/frame_equalizer_channel_ai_weights.h'
+    header = Path(__file__).resolve().parents[3] / 'kernel/channel_estimator/model/frame_equalizer_channel_ai_weights_by_frame.h'
     cnn = load_cnn_header(header)
     selected = frames[:2]
     expected_cnn = sum(len(frame.corpus.inputs_q15) for frame in selected)

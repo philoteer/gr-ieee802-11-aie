@@ -25,7 +25,7 @@ def main():
     parser.add_argument('--recordings', type=Path, default=DEFAULT_RECORDINGS)
     parser.add_argument('--split-mode', choices=('by_frame', 'by_channel'), default='by_frame')
     parser.add_argument('--split', choices=('train', 'val', 'test'), default='test')
-    parser.add_argument('--cnn-header', type=Path, default=ROOT / 'kernel/channel_estimator/model/frame_equalizer_channel_ai_weights.h')
+    parser.add_argument('--cnn-header', type=Path, default=ROOT / 'kernel/channel_estimator/model/frame_equalizer_channel_ai_weights_by_frame.h')
     parser.add_argument('--header', type=Path, default=ROOT / 'kernel/channel_estimator/model/frame_equalizer_channel_updater_mlp_weights.h')
     parser.add_argument('--checkpoint', type=Path, default=ROOT / 'utils/frame_equalizer_channel_ai/training/artifacts/channel_updater.pt')
     parser.add_argument('--reference-radius', type=int, default=8)

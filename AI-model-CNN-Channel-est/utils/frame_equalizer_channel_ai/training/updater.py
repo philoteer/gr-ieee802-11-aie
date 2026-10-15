@@ -276,7 +276,7 @@ def parser():
     """Creates the command-line parser for updater training."""
     result = argparse.ArgumentParser()
     result.add_argument('--recordings', type=Path, default=DEFAULT_RECORDINGS)
-    result.add_argument('--cnn-header', type=Path, default=ROOT / 'kernel/channel_estimator/model/frame_equalizer_channel_ai_weights.h')
+    result.add_argument('--cnn-header', type=Path, default=ROOT / 'kernel/channel_estimator/model/frame_equalizer_channel_ai_weights_by_frame.h')
     result.add_argument('--header', type=Path, default=ROOT / 'kernel/channel_estimator/model/frame_equalizer_channel_updater_mlp_weights.h')
     result.add_argument('--cpu-header', type=Path, default=DEFAULT_CPU_DIRECTORY / 'channel_updater_mlp_weights.h')
     result.add_argument('--report', type=Path, default=Path(__file__).resolve().parent / 'artifacts/updater_report.json')

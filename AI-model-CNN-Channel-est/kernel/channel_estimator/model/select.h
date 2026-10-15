@@ -1,0 +1,19 @@
+#ifndef FRAME_EQUALIZER_CNN_WEIGHTS_SELECT_H
+#define FRAME_EQUALIZER_CNN_WEIGHTS_SELECT_H
+
+#define FRAME_EQUALIZER_CNN_WEIGHTS_BY_FRAME 1
+#define FRAME_EQUALIZER_CNN_WEIGHTS_BY_CHANNEL 2
+
+#ifndef FRAME_EQUALIZER_CNN_WEIGHTS
+#define FRAME_EQUALIZER_CNN_WEIGHTS FRAME_EQUALIZER_CNN_WEIGHTS_BY_FRAME
+#endif
+
+#if FRAME_EQUALIZER_CNN_WEIGHTS == FRAME_EQUALIZER_CNN_WEIGHTS_BY_FRAME
+#include "frame_equalizer_channel_ai_weights_by_frame.h"
+#elif FRAME_EQUALIZER_CNN_WEIGHTS == FRAME_EQUALIZER_CNN_WEIGHTS_BY_CHANNEL
+#include "frame_equalizer_channel_ai_weights_by_channel.h"
+#else
+#error "Unsupported CNN weight set"
+#endif
+
+#endif

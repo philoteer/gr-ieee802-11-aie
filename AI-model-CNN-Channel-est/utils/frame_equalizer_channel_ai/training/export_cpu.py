@@ -25,7 +25,7 @@ def main():
     model = ChannelEstimator()
     model.load_state_dict(payload['state_dict'])
     print(export_trained_cnn(model, payload['metadata']['cpu_gate_snr_ratio_x16'],
-                            args.output_dir / "channel_cnn_weights.h"))
+                            args.output_dir / "channel_cnn_weights_by_frame.h"))
     models, metadata = load_checkpoint(args.updater_checkpoint)
     print(export_trained_updater(models, metadata['cpu_gate_snr_ratio_x16'],
                                 args.output_dir / "channel_updater_mlp_weights.h"))

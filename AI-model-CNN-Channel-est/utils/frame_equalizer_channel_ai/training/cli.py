@@ -28,7 +28,7 @@ DIRECTORY = Path(__file__).resolve().parent
 DEFAULT_CHECKPOINT = DIRECTORY / "artifacts" / "channel_estimator.pt"
 DEFAULT_PREFIX = DIRECTORY / "artifacts" / "channel_estimator_weights"
 DEFAULT_REPORT = DIRECTORY / "artifacts" / "channel_estimator_report.json"
-DEFAULT_HEADER = PROJECT_ROOT / "kernel" / "channel_estimator" / "model" / "frame_equalizer_channel_ai_weights.h"
+DEFAULT_HEADER = PROJECT_ROOT / "kernel" / "channel_estimator" / "model" / "frame_equalizer_channel_ai_weights_by_frame.h"
 
 
 def train(args) -> None:
@@ -110,13 +110,13 @@ def parser() -> argparse.ArgumentParser:
     training.add_argument("--checkpoint", default=str(DEFAULT_CHECKPOINT))
     training.add_argument("--report", default=str(DEFAULT_REPORT))
     training.add_argument("--header", default=str(DEFAULT_HEADER))
-    training.add_argument("--cpu-header", default=str(DEFAULT_CPU_DIRECTORY / "channel_cnn_weights.h"))
+    training.add_argument("--cpu-header", default=str(DEFAULT_CPU_DIRECTORY / "channel_cnn_weights_by_frame.h"))
     training.add_argument("--artifact-prefix", default=str(DEFAULT_PREFIX))
     training.set_defaults(func=train)
     exporting = commands.add_parser("export")
     exporting.add_argument("--checkpoint", default=str(DEFAULT_CHECKPOINT))
     exporting.add_argument("--header", default=str(DEFAULT_HEADER))
-    exporting.add_argument("--cpu-header", default=str(DEFAULT_CPU_DIRECTORY / "channel_cnn_weights.h"))
+    exporting.add_argument("--cpu-header", default=str(DEFAULT_CPU_DIRECTORY / "channel_cnn_weights_by_frame.h"))
     exporting.add_argument("--artifact-prefix", default=str(DEFAULT_PREFIX))
     exporting.add_argument("--gate-snr-ratio-x16", type=int)
     exporting.add_argument("--cpu-gate-snr-ratio-x16", type=int)

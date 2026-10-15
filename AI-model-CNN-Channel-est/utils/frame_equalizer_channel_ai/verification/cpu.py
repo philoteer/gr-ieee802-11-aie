@@ -22,7 +22,7 @@ def main():
     parser.add_argument('--dataset-dir', type=Path, default=DEFAULT_DATASET_DIRECTORY)
     parser.add_argument('--split', choices=('train', 'validation', 'test'), default='test')
     parser.add_argument('--runner', type=Path, default=ROOT.parent.parent / '_gr-ieee802-11/build/lib/qa_channel_ai')
-    parser.add_argument('--cnn-header', type=Path, default=ROOT / 'kernel/channel_estimator/model/frame_equalizer_channel_ai_weights.h')
+    parser.add_argument('--cnn-header', type=Path, default=ROOT / 'kernel/channel_estimator/model/frame_equalizer_channel_ai_weights_by_frame.h')
     parser.add_argument('--checkpoint', type=Path, default=ROOT / 'utils/frame_equalizer_channel_ai/training/artifacts/channel_estimator.pt')
     parser.add_argument('--report', type=Path)
     args = parser.parse_args()

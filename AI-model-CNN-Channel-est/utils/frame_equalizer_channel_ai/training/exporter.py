@@ -10,7 +10,7 @@ import numpy as np
 
 from ..common.quantized import QuantizedEstimator
 
-DEFAULT_CPU_DIRECTORY = Path(__file__).resolve().parents[5] / "_gr-ieee802-11/lib/equalizer/model" #yup ai slop, but doesn't really break the main logic, so.
+DEFAULT_CPU_DIRECTORY = Path(__file__).resolve().parents[4] / "gr-ieee802-11-modified/lib/equalizer/model"
 
 
 def export_float(weights, gate: int, header: Path, namespace: str,

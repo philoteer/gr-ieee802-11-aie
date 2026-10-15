@@ -10,10 +10,11 @@ def load_corpus(directory: Path, dataset: str, split: str) -> ChannelCorpus:
     if dataset == "both":
         sources = ("synthetic_original", "synthetic_gnuradio")
     else:
-        if not dataset or Path(dataset).name != dataset or dataset in (".", ".."):
+        names = dataset.split(",")
+        if any(not name or Path(name).name != name or name in (".", "..") for name in names):
             raise ValueError("dataset must be a source name within the dataset directory")
         source_directories = {"original": "synthetic_original", "gnuradio": "synthetic_gnuradio"}
-        sources = (source_directories.get(dataset, dataset),)
+        sources = tuple(source_directories.get(name, name) for name in names)
     corpora = []
     for source in sources:
         path = directory / source / f"{split}.npz"

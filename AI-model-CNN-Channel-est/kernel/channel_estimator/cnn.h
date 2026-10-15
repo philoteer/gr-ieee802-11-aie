@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #include "cnn_common.h"
-#include "model/frame_equalizer_channel_ai_weights.h"
+#include "model/select.h"
 
 #define FRAME_EQUALIZER_CNN_DATA_UPDATER_NULL 0
 #define FRAME_EQUALIZER_CNN_DATA_UPDATER_MLP 1
@@ -40,7 +40,7 @@
  * The residual is returned to the raw input scale and saturated before it is
  * added to the LS estimate, so the network only refines occupied subcarriers by
  * a bounded amount. Weights come from the generated
- * model/frame_equalizer_channel_ai_weights.h.
+ * model/select.h, selected by FRAME_EQUALIZER_CNN_WEIGHTS.
  */
 
 namespace {
