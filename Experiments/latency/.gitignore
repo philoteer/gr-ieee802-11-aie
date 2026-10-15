@@ -7,3 +7,5 @@
 /NPU/gr-mlir_aie/local/
 /NPU/wifi_rx.py
 /NPU/wifi_rx_epy_block_latency.py
+/gr-ieee802-11/wifi_rx.py
+/gr-ieee802-11/wifi_rx_epy_block_latency.py
