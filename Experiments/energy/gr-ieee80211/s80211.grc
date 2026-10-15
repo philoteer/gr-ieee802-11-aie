@@ -55,9 +55,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [616, 28.0]
+    coordinate: [616, 20.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: file_path
   id: variable
   parameters:
@@ -69,7 +69,7 @@ blocks:
     bus_structure: null
     coordinate: [800, 12.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: file_path
   id: variable
   parameters:

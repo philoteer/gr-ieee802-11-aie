@@ -58,7 +58,7 @@ blocks:
     bus_structure: null
     coordinate: [664, 12.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: file_path
   id: variable
   parameters:
@@ -82,7 +82,7 @@ blocks:
     bus_structure: null
     coordinate: [984, 12.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: freq
   id: variable
   parameters:
@@ -107,7 +107,7 @@ blocks:
     bus_structure: null
     coordinate: [1112, 228.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: kernel_dir
   id: variable
   parameters:
@@ -120,7 +120,7 @@ blocks:
     bus_structure: null
     coordinate: [1104, 316.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: samp_rate
   id: variable
   parameters:
@@ -419,7 +419,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [384, 288.0]
+    coordinate: [384, 316.0]
     rotation: 0
     state: disabled
 - name: epy_block_energy_logger
