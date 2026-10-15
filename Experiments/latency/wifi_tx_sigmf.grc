@@ -3,349 +3,664 @@ options:
     author: ''
     catch_exceptions: 'False'
     category: Custom
-    description: Sample-exact, clean Wi-Fi latency fixture based on wifi_tx.grc
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: Native-block 20 MHz Wi-Fi fixture with sample-exact SigMF annotations
+    gen_cmake: 'On'
+    gen_linking: dynamic
     generate_options: no_gui
     hier_block_src_path: '.:'
     id: wifi_tx_sigmf
+    max_nouts: '0'
     output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: ''
     run: 'True'
     run_command: '{python} -u {filename}'
     run_options: run
+    sizing_mode: fixed
+    thread_safe_setters: ''
     title: Wi-Fi latency SigMF generator
+    window_size: (1000,1000)
   states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
     coordinate: [8, 8]
+    rotation: 0
     state: enabled
 
 blocks:
-- name: samp_rate
+- name: body_samples
   id: variable
   parameters:
-    value: '20000000'
+    comment: ''
+    value: (frame_count - 1) * frame_spacing + frame_samples
   states:
-    coordinate: [200, 8]
-    state: enabled
-- name: freq
-  id: variable
-  parameters:
-    value: '5180000000'
-  states:
-    coordinate: [360, 8]
-    state: enabled
-- name: frame_count
-  id: variable
-  parameters:
-    value: '20'
-  states:
-    coordinate: [520, 8]
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [440, 168]
+    rotation: 0
     state: enabled
 - name: first_sample
   id: variable
   parameters:
+    comment: ''
     value: '100000'
   states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
     coordinate: [680, 8]
+    rotation: 0
+    state: enabled
+- name: frame_count
+  id: variable
+  parameters:
+    comment: ''
+    value: '20'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [520, 8]
+    rotation: 0
+    state: enabled
+- name: frame_samples
+  id: variable
+  parameters:
+    comment: BPSK 1/2, MAC+FCS=28 bytes, five preamble/SIGNAL symbols, rolloff=2.
+    value: 80 * (5 + (16 + 8 * (pdu_length + 28) + 6 + 23) // 24) + 1
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [200, 168]
+    rotation: 0
     state: enabled
 - name: frame_spacing
   id: variable
   parameters:
+    comment: ''
     value: '100000'
   states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
     coordinate: [840, 8]
+    rotation: 0
     state: enabled
-- name: tail_samples
+- name: freq
   id: variable
   parameters:
-    value: '100000'
+    comment: ''
+    value: '2412000000'
   states:
-    coordinate: [1000, 8]
-    state: enabled
-- name: pdu_length
-  id: variable
-  parameters:
-    value: '256'
-  states:
-    coordinate: [200, 88]
-    state: enabled
-- name: output_base
-  id: variable
-  parameters:
-    value: '"wifi_latency"'
-  states:
-    coordinate: [360, 88]
-    state: enabled
-- name: noise_std
-  id: variable
-  parameters:
-    value: '0.003'
-  states:
-    coordinate: [520, 88]
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [360, 8]
+    rotation: 0
     state: enabled
 - name: noise_seed
   id: variable
   parameters:
-    value: '0'
+    comment: Native Noise Source uses seed 0 for system time; use a positive seed.
+    value: '1'
   states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
     coordinate: [680, 88]
+    rotation: 0
+    state: enabled
+- name: noise_std
+  id: variable
+  parameters:
+    comment: ''
+    value: '0.003'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [520, 88]
+    rotation: 0
+    state: enabled
+- name: output_base
+  id: variable
+  parameters:
+    comment: ''
+    value: '"wifi_latency"'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [360, 88]
+    rotation: 0
+    state: enabled
+- name: payloads
+  id: variable
+  parameters:
+    comment: ''
+    value: '[(''WIFI-LATENCY:%08d:'' % i).ljust(pdu_length, ''x'') for i in range(frame_count)]'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [920, 168]
+    rotation: 0
+    state: enabled
+- name: pdu_length
+  id: variable
+  parameters:
+    comment: ''
+    value: '256'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [200, 88]
+    rotation: 0
+    state: enabled
+- name: samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: '20000000'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [200, 8]
+    rotation: 0
+    state: enabled
+- name: tail_samples
+  id: variable
+  parameters:
+    comment: ''
+    value: '100000'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1000, 8]
+    rotation: 0
+    state: enabled
+- name: total_samples
+  id: variable
+  parameters:
+    comment: ''
+    value: first_sample + body_samples + tail_samples
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [680, 168]
+    rotation: 0
     state: enabled
 - name: tx_scale
   id: variable
   parameters:
+    comment: ''
     value: '0.2'
   states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
     coordinate: [840, 88]
+    rotation: 0
     state: enabled
-- name: blocks_vector_source_x_0
+- name: add_noise
+  id: blocks_add_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_inputs: '2'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [784, 536]
+    rotation: 0
+    state: enabled
+- name: await_capture
+  id: snippet
+  parameters:
+    alias: ''
+    code: "import time\ndeadline = time.monotonic() + 60\ntry:\n    while (min(self.iq_file.nitems_read(0),\
+      \ self.output_tags.nitems_read(0)) < self.total_samples\n           or self.phy_tags.num_tags()\
+      \ < self.frame_count):\n        if time.monotonic() > deadline:\n          \
+      \  raise RuntimeError(\"Timed out waiting for native capture blocks\")\n   \
+      \     time.sleep(0.01)\nfinally:\n    self.stop()\n    self.wait()"
+    comment: ''
+    priority: '0'
+    section: main_after_start
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [528, 816]
+    rotation: 0
+    state: enabled
+- name: background_noise
+  id: analog_noise_source_x
+  parameters:
+    affinity: ''
+    alias: ''
+    amp: noise_std * 2**0.5
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    noise_type: analog.GR_GAUSSIAN
+    seed: noise_seed
+    type: complex
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [528, 656]
+    rotation: 0
+    state: enabled
+- name: capture_length
+  id: blocks_head
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: total_samples
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [976, 536]
+    rotation: 0
+    state: enabled
+- name: epy_block_metadata
+  id: epy_block
+  parameters:
+    _source_code: "import hashlib\nimport json\nfrom pathlib import Path\nimport sys\n\
+      import pmt\nfrom gnuradio import gr\n\n\nclass blk(gr.basic_block):\n    \"\"\
+      \"Metadata only: no streaming ports or Python work callback.\"\"\"\n\n    def\
+      \ __init__(self):\n        gr.basic_block.__init__(self, name=\"SigMF metadata\"\
+      , in_sig=None, out_sig=None)\n\n    def prepare(self, g):\n        if not (sys.byteorder\
+      \ == \"little\" and g.frame_count > 0 and\n                32 <= g.pdu_length\
+      \ <= 1500 and g.first_sample >= 0 and\n                g.tail_samples >= 0 and\
+      \ g.frame_spacing >= g.frame_samples and\n                g.samp_rate > 0 and\
+      \ g.noise_seed > 0 and g.noise_std >= 0 and g.tx_scale > 0):\n            raise\
+      \ ValueError(\"Invalid capture parameters or non-little-endian host\")\n   \
+      \     Path(g.output_base + \".sigmf-meta\").unlink(missing_ok=True)\n      \
+      \  g.phy_tags.set_save_all(True)\n        g.output_tags.set_save_all(True)\n\
+      \n    def write(self, g):\n        g.iq_file.close()  # Native File Sink flushes\
+      \ before hashing.\n        path = Path(g.output_base + \".sigmf-data\")\n  \
+      \      bursts, placed = g.phy_tags.current_tags(), g.output_tags.current_tags()\n\
+      \        if path.stat().st_size != g.total_samples * 8 or len(bursts) != g.frame_count\
+      \ or len(placed) != g.frame_count:\n            raise RuntimeError(\"Incomplete\
+      \ capture or frame tag count mismatch\")\n        annotations = []\n       \
+      \ for i, (burst, tag) in enumerate(zip(bursts, placed)):\n            start,\
+      \ length = int(tag.offset), int(pmt.to_long(burst.value))\n            if length\
+      \ != g.frame_samples or burst.offset != i * length or start != g.first_sample\
+      \ + i * g.frame_spacing:\n                raise RuntimeError(\"Native PHY length\
+      \ or scheduled offset mismatch\")\n            annotations.append({\"core:sample_start\"\
+      : start, \"core:sample_count\": length,\n                \"core:label\": \"\
+      wifi-frame-%08d\" % i, \"core:comment\": json.dumps({\n                    \"\
+      frame_id\": i, \"payload_ascii\": g.payloads[i], \"payload_bytes\": g.pdu_length,\n\
+      \                    \"psdu_bytes\": g.pdu_length + 28, \"encoding\": \"BPSK\
+      \ 1/2\",\n                    \"mac_sequence_number\": i % 4096, \"start_seconds\"\
+      : start / g.samp_rate,\n                    \"end_seconds\": (start + length)\
+      \ / g.samp_rate})})\n        with path.open(\"rb\") as data:\n            checksum\
+      \ = hashlib.file_digest(data, \"sha512\").hexdigest()\n        metadata = {\"\
+      global\": {\"core:datatype\": \"cf32_le\", \"core:sample_rate\": g.samp_rate,\n\
+      \            \"core:num_channels\": 1, \"core:version\": \"1.2.0\", \"core:sha512\"\
+      : checksum,\n            \"core:recorder\": \"wifi_tx_sigmf.grc (native GNU\
+      \ Radio blocks)\",\n            \"core:description\": \"BPSK 1/2; tx_scale=%g;\
+      \ native Gaussian noise std=%g per I/Q, seed=%d; no CFO or multipath. Annotations\
+      \ include PHY windowing tail.\" %\n                (g.tx_scale, g.noise_std,\
+      \ g.noise_seed)},\n            \"captures\": [{\"core:sample_start\": 0, \"\
+      core:frequency\": g.freq}], \"annotations\": annotations}\n        Path(g.output_base\
+      \ + \".sigmf-meta\").write_text(json.dumps(metadata, indent=2) + \"\\n\")\n\
+      \        print(\"Wrote %d frames, %d complex samples to %s\" % (g.frame_count,\
+      \ g.total_samples, path))\n"
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    _io_cache: '(''SigMF metadata'', ''blk'', [], [], [], ''Metadata only: no streaming
+      ports or Python work callback.'', [])'
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [24, 816]
+    rotation: 0
+    state: enabled
+- name: finish_metadata
+  id: snippet
+  parameters:
+    alias: ''
+    code: self.epy_block_metadata.write(self)
+    comment: ''
+    priority: '0'
+    section: main_after_stop
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [784, 816]
+    rotation: 0
+    state: enabled
+- name: ieee802_11_mac_0
+  id: ieee802_11_mac
+  parameters:
+    affinity: ''
+    alias: ''
+    bss_mac: '[0xff, 0xff, 0xff, 0xff, 0xff, 0xff]'
+    comment: ''
+    dst_mac: '[0x42, 0x42, 0x42, 0x42, 0x42, 0x42]'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    src_mac: '[0x23, 0x23, 0x23, 0x23, 0x23, 0x23]'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [768, 276.0]
+    rotation: 0
+    state: enabled
+- name: iq_file
+  id: blocks_file_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    append: 'False'
+    comment: ''
+    file: output_base + '.sigmf-data'
+    type: complex
+    unbuffered: 'False'
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1200, 536]
+    rotation: 0
+    state: enabled
+- name: leading_zeros
   id: blocks_vector_source_x
   parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    repeat: 'True'
+    tags: '[]'
+    type: complex
+    vector: (0,)
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [24, 536]
+    rotation: 0
+    state: enabled
+- name: output_tags
+  id: blocks_tag_debug
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    display: 'False'
+    filter: packet_len
+    name: Scheduled frame positions
+    num_inputs: '1'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1200, 656]
+    rotation: 0
+    state: enabled
+- name: packet_pad
+  id: foo_packet_pad2
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    debug: 'False'
+    delay: 'False'
+    delay_sec: '0.01'
+    maxoutbuf: '0'
+    minoutbuf: 2 * frame_spacing
+    pad_front: '0'
+    pad_tail: frame_spacing - frame_samples
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1344, 284.0]
+    rotation: 0
+    state: enabled
+- name: payload_bytes
+  id: blocks_vector_source_x
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    repeat: 'False'
+    tags: '[]'
+    type: byte
+    vector: list(''.join(payloads).encode('ascii'))
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [24, 296]
+    rotation: 0
+    state: enabled
+- name: payload_packets
+  id: blocks_stream_to_tagged_stream
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    len_tag_key: '"packet_len"'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    packet_len: pdu_length
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [256, 296]
+    rotation: 0
+    state: enabled
+- name: payload_pdus
+  id: pdu_tagged_stream_to_pdu
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    tag: packet_len
+    type: byte
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [528, 296]
+    rotation: 0
+    state: enabled
+- name: phy_tags
+  id: blocks_tag_debug
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    display: 'False'
+    filter: packet_len
+    name: PHY burst lengths
+    num_inputs: '1'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1328, 428.0]
+    rotation: 0
+    state: enabled
+- name: prepare_metadata
+  id: snippet
+  parameters:
+    alias: ''
+    code: self.epy_block_metadata.prepare(self)
+    comment: ''
+    priority: '0'
+    section: main_after_init
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [280, 816]
+    rotation: 0
+    state: enabled
+- name: timeline
+  id: blocks_stream_mux
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    lengths: (first_sample, body_samples, tail_samples)
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_inputs: '3'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [280, 536]
+    rotation: 0
+    state: enabled
+- name: trailing_zeros
+  id: blocks_vector_source_x
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    repeat: 'True'
+    tags: '[]'
+    type: complex
+    vector: (0,)
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [24, 656]
+    rotation: 0
+    state: enabled
+- name: tx_gain
+  id: blocks_multiply_const_vxx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    const: tx_scale
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [528, 536]
+    rotation: 0
+    state: enabled
+- name: unused_rx_input
+  id: blocks_vector_source_x
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
     repeat: 'False'
     tags: '[]'
     type: complex
     vector: (0,)
     vlen: '1'
   states:
-    coordinate: [200, 216]
-    state: enabled
-- name: ieee802_11_mac_0
-  id: ieee802_11_mac
-  parameters:
-    bss_mac: '[0xff, 0xff, 0xff, 0xff, 0xff, 0xff]'
-    dst_mac: '[0x42, 0x42, 0x42, 0x42, 0x42, 0x42]'
-    src_mac: '[0x23, 0x23, 0x23, 0x23, 0x23, 0x23]'
-  states:
-    coordinate: [480, 344]
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [768, 380.0]
+    rotation: 0
     state: enabled
 - name: wifi_phy_hier_0
   id: wifi_phy_hier
   parameters:
+    affinity: ''
+    alias: ''
     bandwidth: samp_rate
     chan_est: ieee802_11.LS
+    comment: ''
     encoding: ieee802_11.Encoding(0)
     frequency: freq
+    maxoutbuf: '0'
+    minoutbuf: '0'
     sensitivity: '0.56'
   states:
-    coordinate: [480, 200]
-    state: enabled
-- name: epy_block_recorder
-  id: epy_block
-  parameters:
-    _source_code: |
-      import hashlib
-      import json
-      from pathlib import Path
-      import threading
-
-      import numpy as np
-      import pmt
-      from gnuradio import gr
-
-
-      class blk(gr.sync_block):
-          """Send finite MAC payloads; place tagged PHY bursts at exact file offsets."""
-
-          def __init__(self, output_base="wifi_latency", samp_rate=20000000,
-                       frequency=5180000000, frame_count=20, first_sample=100000,
-                       frame_spacing=100000, tail_samples=100000, pdu_length=256,
-                       noise_std=0.003, noise_seed=0, tx_scale=0.2):
-              gr.sync_block.__init__(self, name="Scheduled SigMF recorder",
-                                     in_sig=[np.complex64], out_sig=None)
-              self.base = Path(output_base).expanduser()
-              self.rate = float(samp_rate)
-              self.frequency = float(frequency)
-              self.count = int(frame_count)
-              self.first = int(first_sample)
-              self.spacing = int(frame_spacing)
-              self.tail = int(tail_samples)
-              self.payload_length = int(pdu_length)
-              self.noise_std = float(noise_std)
-              self.noise_seed = int(noise_seed)
-              self.scale = float(tx_scale)
-              if not np.isfinite(self.scale) or self.scale <= 0:
-                  raise ValueError("tx_scale must be positive and finite")
-              if not np.isfinite(self.noise_std) or self.noise_std < 0 or self.noise_seed < 0:
-                  raise ValueError("noise_std and noise_seed must be nonnegative")
-              if not np.isfinite(self.rate) or self.rate <= 0:
-                  raise ValueError("samp_rate must be positive and finite")
-              if not np.isfinite(self.frequency):
-                  raise ValueError("frequency must be finite")
-              if self.count < 1 or self.first < 0 or self.spacing < 1 or self.tail < 0:
-                  raise ValueError("Invalid frame count, start, spacing or tail")
-              if not 32 <= self.payload_length <= 1500:
-                  raise ValueError("pdu_length must be between 32 and 1500 bytes")
-              # BPSK 1/2: 24 data bits/symbol; MAC adds 24 header + 4 FCS bytes.
-              # Five preamble/SIGNAL symbols, 80 samples each, plus rolloff tail.
-              symbols = (16 + 8 * (self.payload_length + 28) + 6 + 23) // 24
-              if 80 * (5 + symbols) + 1 > self.spacing:
-                  raise ValueError("frame_spacing is too short for this payload")
-              self.key = pmt.intern("packet_len")
-              self.message_port_register_out(pmt.intern("payload"))
-              self.completed = threading.Event()
-              self.error = None
-              self.file = None
-
-          def payload(self, index):
-              prefix = ("WIFI-LATENCY:%08d:" % index).encode("ascii")
-              return prefix + b"x" * (self.payload_length - len(prefix))
-
-          def start(self):
-              self.completed.clear()
-              self.error = None
-              self.annotations = []
-              self.position = 0
-              self.remaining = 0
-              self.next_input = 0
-              self.digest = hashlib.sha512()
-              self.rng = np.random.default_rng(self.noise_seed)
-              self.base.parent.mkdir(parents=True, exist_ok=True)
-              # Remove stale metadata so a failed run cannot look complete.
-              self.base.with_suffix(".sigmf-meta").unlink(missing_ok=True)
-              self.file = self.base.with_suffix(".sigmf-data").open("wb")
-              for index in range(self.count):
-                  self.message_port_pub(pmt.intern("payload"),
-                                        pmt.intern(self.payload(index).decode("ascii")))
-              return True
-
-          def write(self, samples):
-              # Interleaved I/Q draws keep the noise independent of scheduler chunking.
-              if self.noise_std:
-                  noise = self.rng.standard_normal((len(samples), 2)).astype(np.float32)
-                  samples = samples + np.float32(self.noise_std) * (noise[:, 0] + 1j * noise[:, 1])
-              data = np.asarray(samples, dtype="<c8").tobytes()
-              self.file.write(data)
-              self.digest.update(data)
-              self.position += len(samples)
-
-          def zeros(self, count):
-              while count:
-                  chunk = min(count, 65536)
-                  self.write(np.zeros(chunk, dtype=np.complex64))
-                  count -= chunk
-
-          def finish(self):
-              self.zeros(self.tail)
-              self.file.close()
-              self.file = None
-              metadata = {
-                  "global": {
-                      "core:datatype": "cf32_le",
-                      "core:sample_rate": self.rate,
-                      "core:num_channels": 1,
-                      "core:version": "1.2.0",
-                      "core:sha512": self.digest.hexdigest(),
-                      "core:recorder": "wifi_tx_sigmf.grc (GNU Radio)",
-                      "core:description": (
-                          "Legacy OFDM Wi-Fi, BPSK 1/2. "
-                          "Frame i begins at first_sample + i * frame_spacing. "
-                          "Annotations include the PHY windowing tail. "
-                          "No frequency offset, multipath or sample-rate error. "
-                          "Seeded Gaussian noise on all samples: std=%g per I/Q, seed=%d. "
-                          "first_sample=%d, frame_spacing=%d, tail_samples=%d, tx_scale=%g." %
-                          (self.noise_std, self.noise_seed, self.first, self.spacing, self.tail, self.scale))
-                  },
-                  "captures": [{"core:sample_start": 0,
-                                "core:frequency": self.frequency}],
-                  "annotations": self.annotations
-              }
-              path = self.base.with_suffix(".sigmf-meta")
-              path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
-              print("Wrote %d frames, %d complex samples to %s" %
-                    (self.count, self.position, self.base.with_suffix(".sigmf-data")))
-              self.completed.set()
-
-          def work(self, input_items, output_items):
-              samples = input_items[0]
-              if self.completed.is_set():
-                  return len(samples)
-              try:
-                  begin = self.nitems_read(0)
-                  tags = {int(t.offset): int(pmt.to_long(t.value)) for t in
-                          self.get_tags_in_window(0, 0, len(samples), self.key)}
-                  offset = 0
-                  while offset < len(samples):
-                      absolute = begin + offset
-                      if not self.remaining:
-                          if absolute != self.next_input or absolute not in tags:
-                              raise RuntimeError("Missing packet_len at PHY burst boundary")
-                          length = tags[absolute]
-                          if length <= 0 or length > self.spacing:
-                              raise RuntimeError("Invalid or overlapping PHY burst length")
-                          index = len(self.annotations)
-                          target = self.first + index * self.spacing
-                          self.zeros(target - self.position)
-                          self.annotations.append({
-                              "core:sample_start": target,
-                              "core:sample_count": length,
-                              "core:label": "wifi-frame-%08d" % index,
-                              "core:comment": json.dumps({
-                                  "frame_id": index,
-                                  "payload_ascii": self.payload(index).decode("ascii"),
-                                  "payload_bytes": self.payload_length,
-                                  "psdu_bytes": self.payload_length + 28,
-                                  "encoding": "BPSK 1/2",
-                                  "mac_sequence_number": index % 4096,
-                                  "start_seconds": target / self.rate,
-                                  "end_seconds": (target + length) / self.rate
-                              }, sort_keys=True)
-                          })
-                          self.remaining = length
-                          self.next_input += length
-                      size = min(self.remaining, len(samples) - offset)
-                      self.write(samples[offset:offset + size] * np.float32(self.scale))
-                      self.remaining -= size
-                      offset += size
-                      if not self.remaining and len(self.annotations) == self.count:
-                          self.finish()
-                          break
-                  return len(samples)
-              except Exception as error:
-                  self.error = error
-                  self.completed.set()
-                  return -1
-
-          def wait_for_completion(self, timeout=60):
-              if not self.completed.wait(timeout):
-                  raise RuntimeError("Timed out waiting for Wi-Fi PHY bursts")
-              if self.error is not None:
-                  raise RuntimeError("SigMF generation failed") from self.error
-
-          def stop(self):
-              if self.file is not None:
-                  self.file.close()
-                  self.file = None
-              return True
-    output_base: output_base
-    samp_rate: samp_rate
-    frequency: freq
-    frame_count: frame_count
-    first_sample: first_sample
-    frame_spacing: frame_spacing
-    tail_samples: tail_samples
-    pdu_length: pdu_length
-    noise_std: noise_std
-    noise_seed: noise_seed
-    tx_scale: tx_scale
-  states:
-    coordinate: [816, 216]
-    state: enabled
-- name: finish_generation
-  id: snippet
-  parameters:
-    section: main_after_start
-    priority: '0'
-    code: |
-      try:
-          self.epy_block_recorder.wait_for_completion()
-      finally:
-          self.stop()
-          self.wait()
-  states:
-    coordinate: [816, 384]
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1048, 296]
+    rotation: 0
     state: enabled
 
 connections:
-- [blocks_vector_source_x_0, '0', wifi_phy_hier_0, '0']
-- [epy_block_recorder, payload, ieee802_11_mac_0, app in]
+- [add_noise, '0', capture_length, '0']
+- [background_noise, '0', add_noise, '1']
+- [capture_length, '0', iq_file, '0']
+- [capture_length, '0', output_tags, '0']
 - [ieee802_11_mac_0, phy out, wifi_phy_hier_0, mac_in]
-- [wifi_phy_hier_0, '0', epy_block_recorder, '0']
+- [leading_zeros, '0', timeline, '0']
+- [packet_pad, '0', timeline, '1']
+- [payload_bytes, '0', payload_packets, '0']
+- [payload_packets, '0', payload_pdus, '0']
+- [payload_pdus, pdus, ieee802_11_mac_0, app in]
+- [timeline, '0', tx_gain, '0']
+- [trailing_zeros, '0', timeline, '2']
+- [tx_gain, '0', add_noise, '0']
+- [unused_rx_input, '0', wifi_phy_hier_0, '0']
+- [wifi_phy_hier_0, '0', packet_pad, '0']
+- [wifi_phy_hier_0, '0', phy_tags, '0']
 
 metadata:
   file_format: 1
