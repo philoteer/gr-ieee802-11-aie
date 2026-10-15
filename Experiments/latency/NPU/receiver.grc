@@ -18,7 +18,7 @@ options:
     qt_qss_theme: ''
     realtime_scheduling: ''
     run: 'True'
-    run_command: 'env PYTHONPATH=gr-mlir_aie/local/lib/python3.12/site-packages:/opt/xilinx/xrt/python LD_LIBRARY_PATH=gr-mlir_aie/local/lib/x86_64-linux-gnu:/opt/xilinx/xrt/lib {python} -u {filename}'
+    run_command: '{python} -u {filename}'
     run_options: run
     sizing_mode: fixed
     thread_safe_setters: ''
@@ -33,20 +33,6 @@ options:
     state: enabled
 
 blocks:
-- name: connect_phy_latency
-  id: snippet
-  parameters:
-    section: main_after_init
-    priority: '0'
-    code: 'self.msg_connect((self.mlir_aie_mlir_aie_80211_phy_0, "latency"), (self.epy_block_latency, "latency"))'
-    comment: Connect the local PHY message port even when GRC loads the installed block definition.
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1048, 440.0]
-    rotation: 0
-    state: enabled
 - name: file_path
   id: variable
   parameters:
@@ -370,6 +356,7 @@ connections:
 - [mlir_aie_complex64_to_cint16_0, '0', mlir_aie_latency_tag_updater_0, '0']
 - [mlir_aie_latency_tag_updater_0, '0', mlir_aie_mlir_aie_80211_phy_0, '0']
 - [mlir_aie_mlir_aie_80211_phy_0, '0', blocks_stream_to_vector_0, '0']
+- [mlir_aie_mlir_aie_80211_phy_0, latency, epy_block_latency, latency]
 - [mlir_aie_sigmf_tag_injector_0, '0', virtual_sink_0, '0']
 - [virtual_source_0, '0', mlir_aie_complex64_to_cint16_0, '0']
 
