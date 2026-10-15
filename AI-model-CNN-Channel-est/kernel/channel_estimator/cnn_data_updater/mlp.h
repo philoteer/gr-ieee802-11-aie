@@ -5,7 +5,7 @@
 
 #include "../common.h"
 #include "../cnn_common.h"
-#include "../model/frame_equalizer_channel_updater_mlp_weights.h"
+#include "../model/select_updater.h"
 
 namespace {
 

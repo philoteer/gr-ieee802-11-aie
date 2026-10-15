@@ -62,9 +62,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--xclbin', type=Path, required=True)
     parser.add_argument('--insts', type=Path, required=True)
+    parser.add_argument('--split-mode', choices=('by_frame', 'by_channel'), default='by_frame')
     args = parser.parse_args()
-    cnn = load_cnn_header(ROOT / 'kernel/channel_estimator/model/frame_equalizer_channel_ai_weights_by_frame.h')
-    weights, gate = load_mlp_header(ROOT / 'kernel/channel_estimator/model/frame_equalizer_channel_updater_mlp_weights.h')
+    cnn = load_cnn_header(ROOT / f'kernel/channel_estimator/model/frame_equalizer_channel_ai_weights_{args.split_mode}.h')
+    weights, gate = load_mlp_header(ROOT / f'kernel/channel_estimator/model/frame_equalizer_channel_updater_mlp_weights_{args.split_mode}.h')
     handle = DefaultNPURuntime.load(NPUKernel(str(args.xclbin), str(args.insts), kernel_name='MLIR_AIE'))
     for high_snr, scale in ((False, 1), (False, 4), (False, 0.25), (True, 1)):
         lts = np.rint(make_lts() * scale).astype(np.int32)

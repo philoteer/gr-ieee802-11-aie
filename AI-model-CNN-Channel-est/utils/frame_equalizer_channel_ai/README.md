@@ -20,11 +20,13 @@ Use `<program> <command> --help` for the full list of options (or `<program>
 
 ## EXAMPLE
 
-### Recorded frame-split and channel-split CNNs
+### Recorded frame-split and channel-split CNN/MLP pairs
 
-Both models are trained on the combined room and bus collections, using only
-the matching saved train partition. Validation selects the best epoch and LS
-fallback gates independently for integer NPU and floating-point CPU inference.
+Each split policy has its own CNN and MLP updater, both trained on the combined
+room and bus collections using only that policy's saved train partition.
+The updater uses the matching quantized CNN to construct its baseline and
+residual targets. Validation selects the best epochs; fallback gates are
+selected independently for integer NPU and floating-point CPU inference.
 Test partitions are used only for reporting. Reproduce conversion, training,
 and both exports with:
 
@@ -33,11 +35,32 @@ python3 utils/frame_equalizer_channel_ai/training/train_presplit_cnn_models.py
 ```
 
 This wrapper uses the existing SigMF partitions; it does not split the dataset
-again. It regenerates their NPZ representations before training both models.
-This uses seed 40, up to 60 epochs, batch size 256, Adam learning rate 0.002,
+again. It regenerates their NPZ representations before training both CNN/MLP pairs.
+CNN training uses seed 40, up to 60 epochs, batch size 256, Adam learning rate 0.002,
 noise augmentation 0.02, and early stopping patience 8. Converted datasets are
 saved under `data/datasets/channel_estimator/{collection}_{by_frame,by_channel}/`.
 The general training CLI also accepts comma-separated source names in `--dataset`.
+
+To keep the saved CNNs and train only their matching MLP updaters:
+
+```bash
+python3 utils/frame_equalizer_channel_ai/training/train_presplit_cnn_models.py --updater-only
+```
+
+MLP training uses four bias-free `61 -> 16 -> 26` group networks, a clipped
+ReLU hidden layer, clipped linear outputs, Adam with constant learning rate
+0.001, batch size 256, up to 40 epochs, patience 6, minimum validation-MSE
+improvement `1e-7`, and seed 40. Training-only Gaussian augmentation has a
+per-example standard deviation sampled uniformly from `[0, 0.02]` on the first
+60 features; the SNR feature is unchanged. Inputs/targets are normalized Q15
+values and the loss is residual MSE. Averaged reference targets exclude the
+two baseline symbols and the current pilot-bearing symbol, using radius 8
+and at least 4 independent reference symbols.
+
+The MLP reads the saved SigMF partitions directly because it also needs the
+following payload symbol and its pilots. `training/updater.py --recordings`
+accepts multiple collection directories. Its default CNN, output headers,
+checkpoint and report paths all follow `--split-mode by_frame|by_channel`.
 
 Saved checkpoints, losses, sample counts, test digests, exported NPZ/JSON weights,
 and metrics are in `training/artifacts/by_frame/` and `training/artifacts/by_channel/`
@@ -47,6 +70,15 @@ relative to this README. Deployment headers are:
   and `frame_equalizer_channel_ai_weights_by_channel.h`.
 * GNU Radio: `gr-ieee802-11-modified/lib/equalizer/model/channel_cnn_weights_by_frame.h`
   and `channel_cnn_weights_by_channel.h` (relative to the repository root).
+* MLP NPU: `kernel/channel_estimator/model/frame_equalizer_channel_updater_mlp_weights_by_frame.h`
+  and `frame_equalizer_channel_updater_mlp_weights_by_channel.h`.
+* MLP GNU Radio: `gr-ieee802-11-modified/lib/equalizer/model/channel_updater_mlp_weights_by_frame.h`
+  and `channel_updater_mlp_weights_by_channel.h` (relative to the repository root).
+
+Each artifact directory also contains `channel_updater.pt` and
+`updater_report.json`. The reports record the dataset policy, collection paths,
+training settings, per-group validation histories, best epochs, gates, data
+digests, and the SHA-256 of the exact CNN header used to construct the baseline.
 
 Held-out test results from the saved reports (linear NMSE, lower is better):
 
@@ -59,6 +91,17 @@ Channel-split training excludes channels 1 and 13; validation uses channel 1
 and testing uses channel 13. Frame-split partitions contain disjoint frames.
 The two test populations differ, so these rows are not a head-to-head comparison.
 
+MLP held-out results, relative to the matching CNN without an updater:
+
+| Split | Train / validation / test MLP examples | Best epochs (four groups) | Quantized MLP residual MSE / baseline |
+| --- | --- | --- | --- |
+| Frame | 66,906 / 8,608 / 7,388 | 34, 21, 34, 38 | 0.845998 (15.40% reduction) |
+| Channel | 42,163 / 26,644 / 14,095 | 11, 7, 10, 18 | 0.919420 (8.06% reduction) |
+
+MLP example counts differ from CNN counts because an updater example requires
+a following payload symbol and independent surrounding reference symbols.
+These are normalized residual-MSE metrics, not the CNN NMSE values above.
+
 #### NPU compile-time selection
 
 From `AI-model-CNN-Channel-est/`:
@@ -66,6 +109,9 @@ From `AI-model-CNN-Channel-est/`:
 ```bash
 make -C kernel -j2 all EQUALIZER_ALGORITHM=CNN CNN_WEIGHTS=BY_FRAME
 make -C kernel -j2 all EQUALIZER_ALGORITHM=CNN CNN_WEIGHTS=BY_CHANNEL
+# Enable the matching MLP updater as well:
+make -C kernel -j2 all EQUALIZER_ALGORITHM=CNN CNN_WEIGHTS=BY_FRAME CNN_DATA_UPDATER=MLP
+make -C kernel -j2 all EQUALIZER_ALGORITHM=CNN CNN_WEIGHTS=BY_CHANNEL CNN_DATA_UPDATER=MLP
 ```
 
 `CNN_WEIGHTS` supports `BY_FRAME` (the default) and `BY_CHANNEL`.
@@ -73,7 +119,9 @@ The build records the selection in `kernel/build/frame_equalizer_build_mode.txt`
 and automatically rebuilds when it changes. The underlying C++ macro is
 `FRAME_EQUALIZER_CNN_WEIGHTS`, with values `FRAME_EQUALIZER_CNN_WEIGHTS_BY_FRAME`,
 and `FRAME_EQUALIZER_CNN_WEIGHTS_BY_CHANNEL`.
-`CNN_DATA_UPDATER=NULL|MLP` remains independently selectable.
+`CNN_DATA_UPDATER=NULL|MLP` enables/disables payload updates. With `MLP`,
+`CNN_WEIGHTS` selects the matching CNN and MLP together; their split policies
+cannot be selected independently.
 
 #### GNU Radio post-build selection
 
@@ -84,14 +132,14 @@ equalizer blocks expose these methods in their Algorithm dropdown:
 | --- | --- | --- |
 | `ieee802_11.CNN_FRAME` | 6 | Frame-split CNN |
 | `ieee802_11.CNN_CHANNEL` | 7 | Channel-split CNN |
-| `ieee802_11.CNN_FRAME_MLP` | 8 | Frame-split CNN + existing MLP updater |
-| `ieee802_11.CNN_CHANNEL_MLP` | 9 | Channel-split CNN + existing MLP updater |
+| `ieee802_11.CNN_FRAME_MLP` | 8 | Frame-split CNN + frame-split MLP updater |
+| `ieee802_11.CNN_CHANNEL_MLP` | 9 | Channel-split CNN + channel-split MLP updater |
 
 Select at block construction or call, for example,
 `block.set_algorithm(ieee802_11.CNN_CHANNEL)` between frames. Both sets are
 included in the same library, so switching requires no recompilation.
-The MLP updater is the existing separately trained updater; this workflow
-retrains only the CNN.
+Each method selects both CNN and MLP weights and their respective gates as one
+pair. Both split-specific MLPs are included in the same library.
 
 From the repository root, build and check the GNU Radio integration with:
 
@@ -101,6 +149,14 @@ cmake --build gr-ieee802-11-modified/build -j2
 ctest --test-dir gr-ieee802-11-modified/build --output-on-failure
 python3 gr-ieee802-11-modified/utils/test_channel_ai_grc.py
 python3 gr-ieee802-11-modified/utils/test_channel_ai_grc.py --debug-block
+```
+
+On an NPU-equipped system, verify bit-exact CNN+MLP parity against the Python
+integer reference from `AI-model-CNN-Channel-est/`:
+
+```bash
+make -C test/frame_equalizer/cnn_parity -j2 updater-test CNN_WEIGHTS=BY_FRAME
+make -C test/frame_equalizer/cnn_parity -j2 updater-test CNN_WEIGHTS=BY_CHANNEL
 ```
 
 ### Synthetic CNN

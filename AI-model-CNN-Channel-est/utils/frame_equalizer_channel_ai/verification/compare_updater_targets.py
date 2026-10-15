@@ -119,7 +119,8 @@ def main():
                 '--checkpoint', str(directory / 'updater.pt'),
                 '--report', str(directory / 'training.json'),
                 '--header', str(directory / 'npu_weights.h'),
-                '--cpu-header', str(directory / 'cpu_weights.h')])
+                 '--cpu-header', str(directory / 'cpu_weights.h')])
+            updater.resolve_paths(args)
             if not arguments.evaluate_only:
                 with (directory / 'training.log').open('w') as log, redirect_stdout(log):
                     updater.train(args)

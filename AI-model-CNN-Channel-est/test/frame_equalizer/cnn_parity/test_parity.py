@@ -66,7 +66,7 @@ def make_high_snr_lts() -> np.ndarray:
     return lts
 
 
-def cpu_estimate(lts: np.ndarray) -> np.ndarray:
+def cpu_estimate(lts: np.ndarray, split_mode: str = 'by_frame') -> np.ndarray:
     """Run the exported CNN using the host-side integer reference.
 
     This function intentionally follows the production path: remove the LTS
@@ -98,7 +98,7 @@ def cpu_estimate(lts: np.ndarray) -> np.ndarray:
         np.zeros((1, 64, 2), dtype=np.int32),
         shifts,
     )
-    weights = TRAINING / "artifacts" / "channel_estimator_weights.npz"
+    weights = TRAINING / "artifacts" / split_mode / "channel_estimator_weights.npz"
     return integer_estimate(load_npz(weights), corpus)[0]
 
 
@@ -149,6 +149,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--xclbin", type=Path, default=Path("build/final.xclbin"))
     parser.add_argument("--insts", type=Path, default=Path("build/insts.bin"))
+    parser.add_argument('--split-mode', choices=('by_frame', 'by_channel'), default='by_frame')
     args = parser.parse_args()
 
     # Compute the expected result before touching the device.  This keeps the
@@ -157,7 +158,7 @@ def main() -> None:
         NPUKernel(str(args.xclbin), str(args.insts), kernel_name="MLIR_AIE")
     )
     for lts in (make_lts(), make_high_snr_lts()):
-        expected = cpu_estimate(lts)
+        expected = cpu_estimate(lts, args.split_mode)
         output = iron.zeros(64 * 2, dtype=np.int32)
         DefaultNPURuntime.run(
             handle, [iron.tensor(lts.reshape(-1), dtype=np.int32), output]

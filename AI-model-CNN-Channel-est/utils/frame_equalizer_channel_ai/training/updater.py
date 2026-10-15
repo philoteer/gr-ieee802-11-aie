@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 from copy import deepcopy
 import hashlib
 import json
@@ -166,6 +167,35 @@ def score(data, prediction, gate):
     return float(np.mean((errors - residual) ** 2)), float(np.mean(errors ** 2))
 
 
+def load_recording_splits(recordings, split_mode, radius, minimum):
+    """Combine collections only within the same saved partition and policy."""
+    splits = {name: [] for name in ('train', 'val', 'test')}
+    skipped = {name: Counter() for name in splits}
+    for directory in recordings:
+        selected, counts = load_splits(directory, split_mode, radius, minimum,
+                                      retain_samples=True)
+        for name in splits:
+            splits[name].extend(selected[name])
+            skipped[name].update(counts[name])
+    return splits, skipped
+
+
+def resolve_paths(args):
+    """Default all model/artifact paths to the requested split policy."""
+    model_dir = ROOT / 'kernel/channel_estimator/model'
+    artifacts = Path(__file__).resolve().parent / 'artifacts' / args.split_mode
+    defaults = {
+        'cnn_header': model_dir / f'frame_equalizer_channel_ai_weights_{args.split_mode}.h',
+        'header': model_dir / f'frame_equalizer_channel_updater_mlp_weights_{args.split_mode}.h',
+        'cpu_header': DEFAULT_CPU_DIRECTORY / f'channel_updater_mlp_weights_{args.split_mode}.h',
+        'report': artifacts / 'updater_report.json',
+        'checkpoint': artifacts / 'channel_updater.pt',
+    }
+    for name, path in defaults.items():
+        if getattr(args, name, path) is None:
+            setattr(args, name, path)
+
+
 def train(args):
     """Trains four group-specific MLPs, selects an SNR gate, and exports.
 
@@ -176,9 +206,12 @@ def train(args):
     Returns:
         None. Writes the generated C++ weights header and JSON training report.
     """
+    resolve_paths(args)
     torch.set_num_threads(args.threads)
     if args.export_checkpoint is not None:
         models, metadata = load_checkpoint(args.export_checkpoint)
+        if metadata['split_mode'] != args.split_mode:
+            raise ValueError('checkpoint split policy does not match --split-mode')
         export_models(models, metadata['gate_snr_ratio_x16'], metadata['cpu_gate_snr_ratio_x16'], args)
         print(args.header)
         print(args.cpu_header)
@@ -188,14 +221,15 @@ def train(args):
     torch.manual_seed(args.seed)
     torch.use_deterministic_algorithms(True)
     cnn = load_cnn_header(args.cnn_header)
-    splits, skipped = load_splits(args.recordings, args.split_mode, args.reference_radius,
-                                  args.min_reference_symbols, retain_samples=True)
+    splits, skipped = load_recording_splits(args.recordings, args.split_mode, args.reference_radius,
+                                           args.min_reference_symbols)
     splits['validation'] = splits.pop('val')
     data = {name: assemble(selected, cnn, args.reference_radius, args.min_reference_symbols,
                            args.target_mode)
             for name, selected in splits.items()}
     models = []
     training_history = []
+    best_epochs = []
     for group in range(4):
         model = Updater()
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
@@ -208,6 +242,7 @@ def train(args):
         best = float('inf')
         best_weights = deepcopy(model.state_dict())
         stalled = 0
+        best_epoch = 0
         history = []
         for epoch in range(args.epochs):
             model.train()
@@ -221,8 +256,9 @@ def train(args):
             with torch.no_grad():
                 validation = float(torch.mean((model(vx) - vy) ** 2))
             history.append(validation)
-            if validation < best - 1e-7:
+            if validation < best - args.min_delta:
                 best, best_weights, stalled = validation, deepcopy(model.state_dict()), 0
+                best_epoch = epoch + 1
             else:
                 stalled += 1
             if stalled == args.patience:
@@ -230,6 +266,7 @@ def train(args):
         model.load_state_dict(best_weights)
         models.append(model.eval())
         training_history.append(history)
+        best_epochs.append(best_epoch)
     weights = quantize(models)
     validation_prediction = infer(data['validation'][0], weights)
     candidates = snr_gate_candidates()
@@ -239,11 +276,18 @@ def train(args):
     report = {'seed': args.seed, 'epochs': args.epochs, 'patience': args.patience,
               'batch_size': args.batch_size, 'learning_rate': args.learning_rate,
               'noise_std': args.noise_std,
-              'split_mode': args.split_mode, 'recordings': str(args.recordings / args.split_mode),
+              'min_delta': args.min_delta, 'threads': args.threads,
+              'best_epoch_by_group': best_epochs,
+              'epochs_trained_by_group': [len(history) for history in training_history],
+              'split_mode': args.split_mode,
+              'recordings': [str(path / args.split_mode) for path in args.recordings],
               'reference_radius': args.reference_radius,
               'min_reference_symbols': args.min_reference_symbols,
               'target_mode': args.target_mode,
               'cnn_header_sha256': hashlib.sha256(args.cnn_header.read_bytes()).hexdigest(),
+              'cnn_header': str(args.cnn_header),
+              'data_sha256': {name: hashlib.sha256(b''.join(
+                  value.tobytes() for value in values)).hexdigest() for name, values in data.items()},
               'skipped': {name: dict(value) for name, value in skipped.items()},
               'frames': {name: len(value) for name, value in splits.items()},
               'samples': {name: len(value[0]) for name, value in data.items()},
@@ -275,12 +319,13 @@ def train(args):
 def parser():
     """Creates the command-line parser for updater training."""
     result = argparse.ArgumentParser()
-    result.add_argument('--recordings', type=Path, default=DEFAULT_RECORDINGS)
-    result.add_argument('--cnn-header', type=Path, default=ROOT / 'kernel/channel_estimator/model/frame_equalizer_channel_ai_weights_by_frame.h')
-    result.add_argument('--header', type=Path, default=ROOT / 'kernel/channel_estimator/model/frame_equalizer_channel_updater_mlp_weights.h')
-    result.add_argument('--cpu-header', type=Path, default=DEFAULT_CPU_DIRECTORY / 'channel_updater_mlp_weights.h')
-    result.add_argument('--report', type=Path, default=Path(__file__).resolve().parent / 'artifacts/updater_report.json')
-    result.add_argument('--checkpoint', type=Path, default=Path(__file__).resolve().parent / 'artifacts/channel_updater.pt')
+    result.add_argument('--recordings', type=Path, nargs='+', default=[DEFAULT_RECORDINGS],
+                        help='one or more collections with saved partitions')
+    result.add_argument('--cnn-header', type=Path)
+    result.add_argument('--header', type=Path)
+    result.add_argument('--cpu-header', type=Path)
+    result.add_argument('--report', type=Path)
+    result.add_argument('--checkpoint', type=Path)
     result.add_argument('--export-checkpoint', type=Path)
     result.add_argument('--reference-radius', type=int, default=8)
     result.add_argument('--min-reference-symbols', type=int, default=4)
@@ -289,6 +334,7 @@ def parser():
     result.add_argument('--seed', type=int, default=40)
     result.add_argument('--epochs', type=int, default=40)
     result.add_argument('--patience', type=int, default=6)
+    result.add_argument('--min-delta', type=float, default=1e-7)
     result.add_argument('--batch-size', type=int, default=256)
     result.add_argument('--learning-rate', type=float, default=0.001)
     result.add_argument('--noise-std', type=float, default=0.02)

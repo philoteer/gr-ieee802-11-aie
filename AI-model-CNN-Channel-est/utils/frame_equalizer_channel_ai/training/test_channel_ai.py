@@ -359,3 +359,28 @@ def test_updater_training_checkpoint_reexports_both_backends(tmp_path, monkeypat
     actual = np.asarray([float(v.rstrip('f')) for v in values.replace('\n', '').split(',')], dtype=np.float32)
     want = np.stack([model.layers[0].weight.detach().numpy() for model in models]).ravel()
     np.testing.assert_array_equal(actual, want)
+
+
+def test_updater_combines_collections_without_crossing_saved_partitions(monkeypatch):
+    calls = []
+
+    def saved_splits(directory, mode, radius, minimum, retain_samples):
+        calls.append((directory, mode, retain_samples))
+        return ({name: [(directory.name, mode, name)] for name in ('train', 'val', 'test')},
+                {name: {'short_or_invalid': 1} for name in ('train', 'val', 'test')})
+
+    monkeypatch.setattr(updater, 'load_splits', saved_splits)
+    for mode in ('by_frame', 'by_channel'):
+        args = updater.parser().parse_args([
+            '--recordings', 'room', 'bus', '--split-mode', mode])
+        updater.resolve_paths(args)
+        assert args.cnn_header.name == f'frame_equalizer_channel_ai_weights_{mode}.h'
+        assert args.header.name == f'frame_equalizer_channel_updater_mlp_weights_{mode}.h'
+        assert args.cpu_header.name == f'channel_updater_mlp_weights_{mode}.h'
+        assert args.checkpoint.parent.name == mode
+        splits, skipped = updater.load_recording_splits(args.recordings, mode, 8, 4)
+        for name in ('train', 'val', 'test'):
+            assert splits[name] == [('room', mode, name), ('bus', mode, name)]
+            assert skipped[name]['short_or_invalid'] == 2
+    assert [mode for _, mode, _ in calls] == ['by_frame'] * 2 + ['by_channel'] * 2
+    assert all(retained for _, _, retained in calls)

@@ -27,6 +27,9 @@ private:
     const float* d_w2;
     const float* d_w3;
     double d_gate;
+    const float* d_mlp_w1;
+    const float* d_mlp_w2;
+    double d_mlp_gate;
     Eigen::Matrix<float, 6, 70, Eigen::RowMajor> d_input;
     Eigen::Matrix<float, 12, 70, Eigen::RowMajor> d_hidden0;
     Eigen::Matrix<float, 12, 70, Eigen::RowMajor> d_hidden1;

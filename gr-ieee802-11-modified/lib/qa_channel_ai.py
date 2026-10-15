@@ -84,7 +84,7 @@ def main():
     selection = sys.argv[2] if len(sys.argv) > 2 else 'by_frame'
     suffix = '_' + selection
     cnn, cnn_gate = load(directory / f'channel_cnn_weights{suffix}.h', [(12, 6, 7), (12, 12, 5), (2, 12, 3)])
-    mlp, mlp_gate = load(directory / 'channel_updater_mlp_weights.h', [(4, 16, 61), (4, 26, 16)])
+    mlp, mlp_gate = load(directory / f'channel_updater_mlp_weights{suffix}.h', [(4, 16, 61), (4, 26, 16)])
     rng = np.random.default_rng(43)
     cases, expected = [], []
     # UINT64_MAX disables gating; its +/-1 integer boundaries cannot be

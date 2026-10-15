@@ -1,6 +1,6 @@
 #include "channel_ai_model.h"
 #include "model/channel_cnn_weights_by_frame.h"
-#include "model/channel_updater_mlp_weights.h"
+#include "model/channel_updater_mlp_weights_by_frame.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -8,6 +8,7 @@
 
 namespace channel_model {
 #include "model/channel_cnn_weights_by_channel.h"
+#include "model/channel_updater_mlp_weights_by_channel.h"
 }
 
 namespace gr {
@@ -70,11 +71,17 @@ channel_ai_model::channel_ai_model(weights model)
     d_w2 = channel_cnn_weights::kW2;
     d_w3 = channel_cnn_weights::kW3;
     d_gate = channel_cnn_weights::kGateSnrRatioX16;
+    d_mlp_w1 = channel_updater_weights::kW1;
+    d_mlp_w2 = channel_updater_weights::kW2;
+    d_mlp_gate = channel_updater_weights::kGateSnrRatioX16;
     if (model == weights::by_channel) {
         d_w1 = channel_model::channel_cnn_weights::kW1;
         d_w2 = channel_model::channel_cnn_weights::kW2;
         d_w3 = channel_model::channel_cnn_weights::kW3;
         d_gate = channel_model::channel_cnn_weights::kGateSnrRatioX16;
+        d_mlp_w1 = channel_model::channel_updater_weights::kW1;
+        d_mlp_w2 = channel_model::channel_updater_weights::kW2;
+        d_mlp_gate = channel_model::channel_updater_weights::kGateSnrRatioX16;
     }
     d_input.setZero();
     d_hidden0.setZero();
@@ -162,7 +169,7 @@ void channel_ai_model::update(const complex* baseline, const complex* pilots,
                               double ratio_x16, complex* channel)
 {
     std::copy(baseline, baseline + 64, channel);
-    if (!(ratio_x16 < channel_updater_weights::kGateSnrRatioX16))
+    if (!(ratio_x16 < d_mlp_gate))
         return;
     double maximum = 0;
     for (int bin = 6; bin <= 58; ++bin) {
@@ -186,8 +193,8 @@ void channel_ai_model::update(const complex* baseline, const complex* pilots,
         }
         using First = Eigen::Matrix<float, 16, 61, Eigen::RowMajor>;
         using Second = Eigen::Matrix<float, 26, 16, Eigen::RowMajor>;
-        const Eigen::Map<const First> w1(channel_updater_weights::kW1 + group * 16 * 61);
-        const Eigen::Map<const Second> w2(channel_updater_weights::kW2 + group * 26 * 16);
+        const Eigen::Map<const First> w1(d_mlp_w1 + group * 16 * 61);
+        const Eigen::Map<const Second> w2(d_mlp_w2 + group * 26 * 16);
         d_hidden.noalias() = w1 * d_features;
         d_hidden = d_hidden.cwiseMax(0.0f).cwiseMin(q15_max);
         d_output.noalias() = w2 * d_hidden;
