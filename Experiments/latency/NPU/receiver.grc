@@ -18,7 +18,7 @@ options:
     qt_qss_theme: ''
     realtime_scheduling: ''
     run: 'True'
-    run_command: '{python} -u {filename}'
+    run_command: 'env PYTHONPATH=gr-mlir_aie/local/lib/python3.12/site-packages:/opt/xilinx/xrt/python LD_LIBRARY_PATH=gr-mlir_aie/local/lib/x86_64-linux-gnu:/opt/xilinx/xrt/lib {python} -u {filename}'
     run_options: run
     sizing_mode: fixed
     thread_safe_setters: ''
@@ -33,6 +33,20 @@ options:
     state: enabled
 
 blocks:
+- name: connect_phy_latency
+  id: snippet
+  parameters:
+    section: main_after_init
+    priority: '0'
+    code: 'self.msg_connect((self.mlir_aie_mlir_aie_80211_phy_0, "latency"), (self.epy_block_latency, "latency"))'
+    comment: Connect the local PHY message port even when GRC loads the installed block definition.
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1048, 440.0]
+    rotation: 0
+    state: enabled
 - name: file_path
   id: variable
   parameters:
@@ -219,17 +233,59 @@ blocks:
     coordinate: [304, 356.0]
     rotation: 0
     state: enabled
-- name: mlir_aie_latency_tag_updater_0_0
-  id: mlir_aie_latency_tag_updater
+- name: epy_block_latency
+  id: epy_block
   parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    name: phy_end
-    type: byte
-    vlen: '1'
+    _source_code: |
+      from gnuradio import gr
+      import pmt
+
+
+      class blk(gr.basic_block):
+          """Print host-side PHY chunk-completion latency for annotated frames."""
+
+          def __init__(self):
+              gr.basic_block.__init__(self, name="PHY latency", in_sig=None, out_sig=None)
+              self.starts = {}
+              self.count = 0
+              self.total_ms = 0.0
+              self.message_port_register_in(pmt.intern("latency"))
+              self.set_msg_handler(pmt.intern("latency"), self.handle_latency)
+
+          def handle_latency(self, message):
+              if not pmt.is_pair(message):
+                  return
+              key, value = pmt.car(message), pmt.cdr(message)
+              if not pmt.is_symbol(key) or not pmt.is_dict(value):
+                  return
+              event = pmt.symbol_to_string(key)
+              if event not in ("frame_start", "frame_end"):
+                  return
+              frame_id = pmt.dict_ref(value, pmt.intern("frame_id"), pmt.PMT_NIL)
+              times = pmt.dict_ref(value, pmt.intern("timestamps_ns"), pmt.PMT_NIL)
+              if not pmt.is_symbol(frame_id) or not pmt.is_dict(times):
+                  return
+              start = pmt.dict_ref(times, pmt.intern("phy_start"), pmt.PMT_NIL)
+              end = pmt.dict_ref(times, pmt.intern("phy_end"), pmt.PMT_NIL)
+              if not pmt.is_uint64(start) or not pmt.is_uint64(end):
+                  return
+              frame_id = pmt.symbol_to_string(frame_id)
+              start, end = pmt.to_uint64(start), pmt.to_uint64(end)
+              if event == "frame_start":
+                  self.starts[frame_id] = start
+                  return
+              first = self.starts.pop(frame_id, None)
+              if first is None or end < start or end < first:
+                  return
+              elapsed_ms = (end - first) / 1e6
+              tail_ms = (end - start) / 1e6
+              self.count += 1
+              self.total_ms += elapsed_ms
+              print(f"[PHY latency estimate] {frame_id}: "
+                    f"start-to-completion={elapsed_ms:.3f} ms, "
+                    f"end-to-completion={tail_ms:.3f} ms, "
+                    f"mean={self.total_ms / self.count:.3f} ms (n={self.count})",
+                    flush=True)
   states:
     bus_sink: false
     bus_source: false
@@ -313,8 +369,7 @@ connections:
 - [ieee802_11_decode_mac_0, out, foo_wireshark_connector_0, in]
 - [mlir_aie_complex64_to_cint16_0, '0', mlir_aie_latency_tag_updater_0, '0']
 - [mlir_aie_latency_tag_updater_0, '0', mlir_aie_mlir_aie_80211_phy_0, '0']
-- [mlir_aie_latency_tag_updater_0_0, '0', blocks_stream_to_vector_0, '0']
-- [mlir_aie_mlir_aie_80211_phy_0, '0', mlir_aie_latency_tag_updater_0_0, '0']
+- [mlir_aie_mlir_aie_80211_phy_0, '0', blocks_stream_to_vector_0, '0']
 - [mlir_aie_sigmf_tag_injector_0, '0', virtual_sink_0, '0']
 - [virtual_source_0, '0', mlir_aie_complex64_to_cint16_0, '0']
 

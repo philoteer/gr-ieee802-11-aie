@@ -58,5 +58,8 @@ outputs:
 - label: out
   domain: stream
   dtype: byte
+- id: latency
+  domain: message
+  optional: true
 
 file_format: 1

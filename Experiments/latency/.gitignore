@@ -3,3 +3,7 @@
 /wifi_tx_sigmf.py
 /wifi_rx_compat.py
 /compat_report.json
+/NPU/gr-mlir_aie/build-local/
+/NPU/gr-mlir_aie/local/
+/NPU/wifi_rx.py
+/NPU/wifi_rx_epy_block_latency.py

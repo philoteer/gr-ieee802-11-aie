@@ -12,6 +12,7 @@
 #include <pmt/pmt.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <complex>
 #include <cstring>
@@ -99,6 +100,7 @@ mlir_aie_80211_phy_impl::mlir_aie_80211_phy_impl(const char* path_xclbin,
     }
 
     set_tag_propagation_policy(TPP_DONT);
+    message_port_register_out(pmt::intern("latency"));
 
     _instr_v = test_utils::load_instr_binary(path_insts_bin);
     const auto [center_mhz, reciprocal_q30] = phy_frequency_rtp(nominal_frequency);
@@ -230,6 +232,22 @@ int mlir_aie_80211_phy_impl::general_work(int noutput_items,
     n_chunks = frequency_batch.n_chunks;
     if (frequency_batch.frequency)
         set_nominal_frequency(*frequency_batch.frequency);
+
+    // Input and output sample offsets are not interchangeable: the PHY removes
+    // the preamble/CP and changes item size. Report annotated input boundaries
+    // over a message port instead of inventing output stream tag offsets.
+    std::vector<tag_t> latency_tags;
+    get_tags_in_range(latency_tags, 0, input_abs_start,
+                     input_abs_start + static_cast<uint64_t>(n_chunks) * _VECTOR_SIZE);
+    latency_tags.erase(
+        std::remove_if(latency_tags.begin(), latency_tags.end(), [](const tag_t& tag) {
+            return !(pmt::eq(tag.key, pmt::intern("frame_start")) ||
+                     pmt::eq(tag.key, pmt::intern("frame_end"))) ||
+                   !pmt::is_dict(tag.value);
+        }), latency_tags.end());
+    std::stable_sort(latency_tags.begin(), latency_tags.end(),
+                     [](const tag_t& a, const tag_t& b) { return a.offset < b.offset; });
+    size_t next_latency_tag = 0;
 
     // The previous general_work call waited for every run. Update the shared
     // instruction BO only here, before starting any run in this batch.
@@ -367,6 +385,27 @@ int mlir_aie_80211_phy_impl::general_work(int noutput_items,
             }
 
             total_produced += tile_len;
+        }
+
+        // Timestamp after retiring this chunk, before Python message delivery.
+        // steady_clock uses CLOCK_MONOTONIC on our Linux GNU Radio host, matching
+        // sigmf_tag_injector and latency_tag_updater.
+        const auto completed_ns = static_cast<uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now().time_since_epoch()).count());
+        const auto chunk_end = input_abs_start + static_cast<uint64_t>(i + 1) * _VECTOR_SIZE;
+        while (next_latency_tag < latency_tags.size() &&
+               latency_tags[next_latency_tag].offset < chunk_end) {
+            const auto& tag = latency_tags[next_latency_tag++];
+            auto timestamps = pmt::dict_ref(tag.value, pmt::intern("timestamps_ns"),
+                                             pmt::make_dict());
+            if (!pmt::is_dict(timestamps))
+                continue;
+            timestamps = pmt::dict_add(timestamps, pmt::intern("phy_end"),
+                                       pmt::from_uint64(completed_ns));
+            const auto value = pmt::dict_add(tag.value, pmt::intern("timestamps_ns"),
+                                             timestamps);
+            message_port_pub(pmt::intern("latency"), pmt::cons(tag.key, value));
         }
     }
 
