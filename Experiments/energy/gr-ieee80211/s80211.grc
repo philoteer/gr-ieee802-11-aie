@@ -57,7 +57,7 @@ blocks:
     bus_structure: null
     coordinate: [616, 28.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: file_path
   id: variable
   parameters:
@@ -69,7 +69,7 @@ blocks:
     bus_structure: null
     coordinate: [800, 12.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: file_path
   id: variable
   parameters:
@@ -244,26 +244,6 @@ blocks:
     coordinate: [808, 328.0]
     rotation: 0
     state: enabled
-- name: energy_logger_prepare
-  id: snippet
-  parameters:
-    section: main_after_init
-    priority: '0'
-    code: self.epy_block_energy_logger.begin_logging()
-  states:
-    coordinate: [16, 600]
-    rotation: 0
-    state: enabled
-- name: energy_logger_start
-  id: snippet
-  parameters:
-    section: main_after_start
-    priority: '0'
-    code: 'self.epy_block_energy_logger.start_monitoring(lambda: self.mlir_aie_sigmf_tag_injector_0.nitems_written(0))'
-  states:
-    coordinate: [16, 680]
-    rotation: 0
-    state: enabled
 - name: energy_logger_finish
   id: snippet
   parameters:
@@ -279,41 +259,81 @@ blocks:
     coordinate: [16, 132.0]
     rotation: 0
     state: enabled
+- name: energy_logger_prepare
+  id: snippet
+  parameters:
+    alias: ''
+    code: self.epy_block_energy_logger.begin_logging()
+    comment: ''
+    priority: '0'
+    section: main_after_init
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [16, 600]
+    rotation: 0
+    state: enabled
+- name: energy_logger_start
+  id: snippet
+  parameters:
+    alias: ''
+    code: 'self.epy_block_energy_logger.start_monitoring(lambda: self.mlir_aie_sigmf_tag_injector_0.nitems_written(0))'
+    comment: ''
+    priority: '0'
+    section: main_after_start
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [16, 680]
+    rotation: 0
+    state: enabled
 - name: epy_block_energy_logger
   id: epy_block
   parameters:
     _source_code: "import atexit\nimport csv\nfrom pathlib import Path\nimport threading\n\
-      import time\n\nfrom gnuradio import gr\n\n\nclass blk(gr.basic_block):\n\
-      \    \"\"\"Log energy using low-rate polling, without any streaming ports.\n\n    Lifecycle snippets prepare the baseline before streaming, start the sampler\n    after native counters are initialized, and finalize after top_block.wait().\n    No Python work callback or extra IQ buffer reader is scheduled.\n\n  \
-      \  Attributes:\n        csv_path (Path): CSV destination, overwritten at each\
+      import time\n\nfrom gnuradio import gr\n\n\nclass blk(gr.basic_block):\n   \
+      \ \"\"\"Log energy using low-rate polling, without any streaming ports.\n\n\
+      \    Lifecycle snippets prepare the baseline before streaming, start the sampler\n\
+      \    after native counters are initialized, and finalize after top_block.wait().\n\
+      \    No Python work callback or extra IQ buffer reader is scheduled.\n\n   \
+      \ Attributes:\n        csv_path (Path): CSV destination, overwritten at each\
       \ start.\n        interval (float): Requested delay between sensor readings\
       \ in seconds.\n        rapl (Path): RAPL package domain directory.\n       \
       \ supplies (Path): ACPI power supply directory.\n        samples (int): Number\
-      \ of complex IQ samples last polled from the native counter.\n    \"\"\"\n\n    def __init__(self,\
-      \ csv_path=\"original_energy.csv\", interval=0.5,\n                 rapl_path=\"\
-      /sys/class/powercap/intel-rapl:0\",\n                 power_supply_path=\"/sys/class/power_supply\"\
-      ):\n        \"\"\"Initialize the monitor without opening sensors or starting a thread.\n\
-      \n        Args:\n            csv_path (str): Destination path for the measurement\
-      \ CSV.\n            interval (float): Sampling delay in seconds, at least 0.05.\n\
-      \            rapl_path (str): Directory containing energy_uj, name, and\n  \
-      \              max_energy_range_uj for the measured RAPL domain.\n         \
-      \   power_supply_path (str): Directory containing the battery and\n        \
-      \        external power supply sysfs entries.\n\n        Raises:\n         \
-      \   ValueError: If interval is less than 0.05 seconds.\n        \"\"\"\n   \
-      \     gr.basic_block.__init__(self, name=\"Run Energy Logger\",\n           \
-      \                    in_sig=None, out_sig=None)\n        if interval\
-      \ < 0.05:\n            raise ValueError(\"Energy sampling interval must be at\
-      \ least 0.05 s\")\n        self.csv_path = Path(csv_path)\n        self.interval\
-      \ = interval\n        self.rapl = Path(rapl_path)\n        self.supplies = Path(power_supply_path)\n\
-      \        self.samples = 0\n        self._counter = lambda: 0\n        self._sensor_files = {}\n        self._last_flush_ns = 0\n        self._done = threading.Event()\n        self._thread\
-      \ = None\n        self._file = None\n        self._error = None\n        self._previous\
-      \ = None\n        self._energy_j = 0.0\n\n    def _read(self, path):\n\
-      \        \"\"\"Read a sysfs attribute and remove surrounding whitespace.\n\n\
-      \        Args:\n            path (Path): Attribute file to read.\n\n       \
-      \ Returns:\n            str: Stripped attribute value.\n\n        Raises:\n\
-      \            OSError: If the attribute cannot be read.\n        \"\"\"\n   \
-      \     stream = self._sensor_files.get(path)\n        if stream is None:\n            stream = path.open(\"r\")\n            self._sensor_files[path] = stream\n        stream.seek(0)\n        return stream.read().strip()\n\n    def _close_sensors(self):\n        \"\"\"Close cached sysfs files after the sampler thread has stopped.\"\"\"\n        for stream in self._sensor_files.values():\n            stream.close()\n        self._sensor_files.clear()\n\n    def _battery_reading(self):\n \
-      \       \"\"\"Read battery measurements only while unplugged and discharging.\n\
+      \ of complex IQ samples last polled from the native counter.\n    \"\"\"\n\n\
+      \    def __init__(self, csv_path=\"original_energy.csv\", interval=0.5,\n  \
+      \               rapl_path=\"/sys/class/powercap/intel-rapl:0\",\n          \
+      \       power_supply_path=\"/sys/class/power_supply\"):\n        \"\"\"Initialize\
+      \ the monitor without opening sensors or starting a thread.\n\n        Args:\n\
+      \            csv_path (str): Destination path for the measurement CSV.\n   \
+      \         interval (float): Sampling delay in seconds, at least 0.05.\n    \
+      \        rapl_path (str): Directory containing energy_uj, name, and\n      \
+      \          max_energy_range_uj for the measured RAPL domain.\n            power_supply_path\
+      \ (str): Directory containing the battery and\n                external power\
+      \ supply sysfs entries.\n\n        Raises:\n            ValueError: If interval\
+      \ is less than 0.05 seconds.\n        \"\"\"\n        gr.basic_block.__init__(self,\
+      \ name=\"Run Energy Logger\",\n                               in_sig=None, out_sig=None)\n\
+      \        if interval < 0.05:\n            raise ValueError(\"Energy sampling\
+      \ interval must be at least 0.05 s\")\n        self.csv_path = Path(csv_path)\n\
+      \        self.interval = interval\n        self.rapl = Path(rapl_path)\n   \
+      \     self.supplies = Path(power_supply_path)\n        self.samples = 0\n  \
+      \      self._counter = lambda: 0\n        self._sensor_files = {}\n        self._last_flush_ns\
+      \ = 0\n        self._done = threading.Event()\n        self._thread = None\n\
+      \        self._file = None\n        self._error = None\n        self._previous\
+      \ = None\n        self._energy_j = 0.0\n\n    def _read(self, path):\n     \
+      \   \"\"\"Read a sysfs attribute and remove surrounding whitespace.\n\n    \
+      \    Args:\n            path (Path): Attribute file to read.\n\n        Returns:\n\
+      \            str: Stripped attribute value.\n\n        Raises:\n           \
+      \ OSError: If the attribute cannot be read.\n        \"\"\"\n        stream\
+      \ = self._sensor_files.get(path)\n        if stream is None:\n            stream\
+      \ = path.open(\"r\")\n            self._sensor_files[path] = stream\n      \
+      \  stream.seek(0)\n        return stream.read().strip()\n\n    def _close_sensors(self):\n\
+      \        \"\"\"Close cached sysfs files after the sampler thread has stopped.\"\
+      \"\"\n        for stream in self._sensor_files.values():\n            stream.close()\n\
+      \        self._sensor_files.clear()\n\n    def _battery_reading(self):\n   \
+      \     \"\"\"Read battery measurements only while unplugged and discharging.\n\
       \n        Returns:\n            tuple: External power online flag (bool), battery\
       \ status (str),\n            discharge power in watts (float), and stored energy\
       \ in joules\n            (float). The last two values are empty strings when\
@@ -329,85 +349,107 @@ blocks:
       \        watts = int(self._read(self._battery / \"power_now\")) / 1e6\n    \
       \    joules = int(self._read(self._battery / \"energy_now\")) * 0.0036\n   \
       \     return online, status, watts, joules\n\n    def _sample(self, phase):\n\
-      \        \"\"\"Take one sensor snapshot, update energy totals, and buffer a CSV\
-      \ row.\n\n        The first reading establishes the monotonic time and counter\
+      \        \"\"\"Take one sensor snapshot, update energy totals, and buffer a\
+      \ CSV row.\n\n        The first reading establishes the monotonic time and counter\
       \ baseline.\n        Later readings derive interval-average package power and\
       \ cumulative\n        energy. Calls must be serialized between startup, the\
       \ monitor thread,\n        and finalization.\n\n        Args:\n            phase\
       \ (str): Row marker: \"start\", \"sample\", or \"end\".\n\n        Raises:\n\
       \            OSError: If a sensor read or CSV write fails.\n            ValueError:\
       \ If a numeric sensor attribute cannot be parsed.\n        \"\"\"\n        counter\
-      \ = int(self._read(self.rapl / \"energy_uj\"))\n        now = time.monotonic_ns()\n        self.samples = int(self._counter())\n\
-      \        wall = time.time_ns()\n        online, status, system_w, battery_j\
-      \ = self._battery_reading()\n        power_w = \"\"\n        if self._previous\
-      \ is None:\n            self._start_ns = now\n        else:\n            previous_ns,\
-      \ previous_counter = self._previous\n            delta = counter - previous_counter\n\
-      \            if delta < 0:\n                # Correct one counter wrap between\
-      \ consecutive readings.\n                delta += self._range_uj\n         \
-      \   self._energy_j += delta / 1e6\n            # Convert microjoules / nanoseconds\
-      \ to joules / second (watts).\n            power_w = delta * 1000.0 / (now -\
-      \ previous_ns)\n        self._previous = now, counter\n        self._writer.writerow({\n\
-      \            \"phase\": phase,\n            \"unix_time_ns\": wall,\n      \
-      \      \"elapsed_s\": (now - self._start_ns) / 1e9,\n            \"samples_processed\"\
+      \ = int(self._read(self.rapl / \"energy_uj\"))\n        now = time.monotonic_ns()\n\
+      \        self.samples = int(self._counter())\n        wall = time.time_ns()\n\
+      \        online, status, system_w, battery_j = self._battery_reading()\n   \
+      \     power_w = \"\"\n        if self._previous is None:\n            self._start_ns\
+      \ = now\n        else:\n            previous_ns, previous_counter = self._previous\n\
+      \            delta = counter - previous_counter\n            if delta < 0:\n\
+      \                # Correct one counter wrap between consecutive readings.\n\
+      \                delta += self._range_uj\n            self._energy_j += delta\
+      \ / 1e6\n            # Convert microjoules / nanoseconds to joules / second\
+      \ (watts).\n            power_w = delta * 1000.0 / (now - previous_ns)\n   \
+      \     self._previous = now, counter\n        self._writer.writerow({\n     \
+      \       \"phase\": phase,\n            \"unix_time_ns\": wall,\n           \
+      \ \"elapsed_s\": (now - self._start_ns) / 1e9,\n            \"samples_processed\"\
       : self.samples,\n            \"rapl_domain\": self._domain,\n            \"\
       rapl_energy_uj\": counter,\n            \"rapl_max_energy_range_uj\": self._range_uj,\n\
       \            \"soc_energy_j\": self._energy_j,\n            \"soc_power_w\"\
       : power_w,\n            \"ac_online\": int(online),\n            \"battery_status\"\
       : status,\n            \"system_power_w\": system_w,\n            \"battery_energy_j\"\
-      : battery_j,\n        })\n        # Flush boundary rows and at most once every five seconds during the run.\n        if phase != \"sample\" or now - self._last_flush_ns >= 5_000_000_000:\n            self._file.flush()\n            self._last_flush_ns = now\n\n    def _prepare_logging(self):\n\
-      \        \"\"\"Initialize sensors, CSV output, and a not-yet-started sampler thread.\n\
-      \n        Called by begin_logging() before the flowgraph starts. Takes the baseline\n\
-      \        reading synchronously before launching the monitor thread and\n   \
-      \     registers an exit-time cleanup fallback.\n\n        Returns:\n       \
-      \     bool: True when initialization succeeds.\n\n        Raises:\n        \
-      \    RuntimeError: If there is not exactly one battery or no external\n    \
-      \            power supply online indicator is available.\n            OSError:\
-      \ If sensor discovery, attribute reads, or CSV setup fails.\n            ValueError:\
-      \ If a numeric sensor attribute cannot be parsed.\n        \"\"\"\n        self.csv_path\
-      \ = Path(self.csv_path)\n        self.rapl = Path(self.rapl)\n        self.supplies\
-      \ = Path(self.supplies)\n        self.samples = 0\n        self._counter = lambda: 0\n        self._last_flush_ns = 0\n        self._thread = None\n        self._previous =\
-      \ None\n        self._energy_j = 0.0\n        self._error = None\n        self._done.clear()\n\
-      \        self._range_uj = int(self._read(self.rapl / \"max_energy_range_uj\"\
-      ))\n        self._domain = self._read(self.rapl / \"name\")\n        batteries\
-      \ = [p for p in self.supplies.iterdir()\n                     if (p / \"type\"\
-      ).exists() and self._read(p / \"type\") == \"Battery\"]\n        if len(batteries)\
-      \ != 1:\n            raise RuntimeError(\"Energy logger requires exactly one\
-      \ battery\")\n        self._battery = batteries[0]\n        self._external =\
-      \ [p for p in self.supplies.iterdir()\n                          if p != self._battery\
-      \ and (p / \"online\").exists()]\n        if not self._external:\n         \
-      \   raise RuntimeError(\"No external power supply online indicator found\")\n\
-      \        self.csv_path.parent.mkdir(parents=True, exist_ok=True)\n        self._file\
-      \ = self.csv_path.open(\"w\", newline=\"\")\n        self._writer = csv.DictWriter(self._file,\
-      \ fieldnames=[\n            \"phase\", \"unix_time_ns\", \"elapsed_s\", \"samples_processed\"\
-      ,\n            \"rapl_domain\", \"rapl_energy_uj\", \"rapl_max_energy_range_uj\"\
+      : battery_j,\n        })\n        # Flush boundary rows and at most once every\
+      \ five seconds during the run.\n        if phase != \"sample\" or now - self._last_flush_ns\
+      \ >= 5_000_000_000:\n            self._file.flush()\n            self._last_flush_ns\
+      \ = now\n\n    def _prepare_logging(self):\n        \"\"\"Initialize sensors,\
+      \ CSV output, and a not-yet-started sampler thread.\n\n        Called by begin_logging()\
+      \ before the flowgraph starts. Takes the baseline\n        reading synchronously\
+      \ before launching the monitor thread and\n        registers an exit-time cleanup\
+      \ fallback.\n\n        Returns:\n            bool: True when initialization\
+      \ succeeds.\n\n        Raises:\n            RuntimeError: If there is not exactly\
+      \ one battery or no external\n                power supply online indicator\
+      \ is available.\n            OSError: If sensor discovery, attribute reads,\
+      \ or CSV setup fails.\n            ValueError: If a numeric sensor attribute\
+      \ cannot be parsed.\n        \"\"\"\n        self.csv_path = Path(self.csv_path)\n\
+      \        self.rapl = Path(self.rapl)\n        self.supplies = Path(self.supplies)\n\
+      \        self.samples = 0\n        self._counter = lambda: 0\n        self._last_flush_ns\
+      \ = 0\n        self._thread = None\n        self._previous = None\n        self._energy_j\
+      \ = 0.0\n        self._error = None\n        self._done.clear()\n        self._range_uj\
+      \ = int(self._read(self.rapl / \"max_energy_range_uj\"))\n        self._domain\
+      \ = self._read(self.rapl / \"name\")\n        batteries = [p for p in self.supplies.iterdir()\n\
+      \                     if (p / \"type\").exists() and self._read(p / \"type\"\
+      ) == \"Battery\"]\n        if len(batteries) != 1:\n            raise RuntimeError(\"\
+      Energy logger requires exactly one battery\")\n        self._battery = batteries[0]\n\
+      \        self._external = [p for p in self.supplies.iterdir()\n            \
+      \              if p != self._battery and (p / \"online\").exists()]\n      \
+      \  if not self._external:\n            raise RuntimeError(\"No external power\
+      \ supply online indicator found\")\n        self.csv_path.parent.mkdir(parents=True,\
+      \ exist_ok=True)\n        self._file = self.csv_path.open(\"w\", newline=\"\"\
+      )\n        self._writer = csv.DictWriter(self._file, fieldnames=[\n        \
+      \    \"phase\", \"unix_time_ns\", \"elapsed_s\", \"samples_processed\",\n  \
+      \          \"rapl_domain\", \"rapl_energy_uj\", \"rapl_max_energy_range_uj\"\
       ,\n            \"soc_energy_j\", \"soc_power_w\", \"ac_online\", \"battery_status\"\
       ,\n            \"system_power_w\", \"battery_energy_j\"])\n        self._writer.writeheader()\n\
       \        try:\n            self._sample(\"start\")\n        except Exception:\n\
       \            self._file.close()\n            self._file = None\n           \
       \ raise\n        self._thread = threading.Thread(target=self._monitor, daemon=True)\n\
-      \        atexit.register(self.finish_logging)\n\
-      \        return True\n\n    def _monitor(self):\n        \"\"\"Sample periodically\
-      \ until finalization requests a stop.\n\n        Waiting on the event lets finalization\
-      \ wake the thread immediately.\n        Sensor or write errors are saved and\
-      \ re-raised by finish_logging(),\n        leaving the CSV without an end marker.\n\
-      \        \"\"\"\n        while not self._done.wait(self.interval):\n       \
-      \     try:\n                self._sample(\"sample\")\n            except Exception\
-      \ as error:\n                self._error = error\n                return\n\n\
-      \    def finish_logging(self):\n        \"\"\"Stop monitoring, take the final\
-      \ reading, and close the CSV.\n\n        Call after top_block.wait() returns.\
-      \ This method is idempotent after\n        the CSV closes. The monitor is joined\
-      \ before the final reading to\n        prevent concurrent writes. Cleanup closes\
-      \ the CSV even on failure.\n\n        Raises:\n            RuntimeError: If\
-      \ background sampling failed.\n            OSError: If the final sensor read\
-      \ or CSV write fails.\n            ValueError: If a final numeric sensor attribute\
-      \ cannot be parsed.\n        \"\"\"\n        # The IQ branch can finish before\
-      \ the decoder. Do not finalize in\n        # block.stop(): the flowgraph's after-stop\
-      \ snippet calls this after wait().\n        if self._file is None:\n       \
-      \     self._close_sensors()\n            return\n        self._done.set()\n        if self._thread is not None and self._thread.ident is not None:\n            self._thread.join()\n      \
-      \  try:\n            if self._error is not None:\n                raise RuntimeError(\"\
-      Energy sampling failed\") from self._error\n            self._sample(\"end\"\
-      )\n        finally:\n            self._file.close()\n            self._file\
-      \ = None\n            self._close_sensors()\n            atexit.unregister(self.finish_logging)\n\n    def begin_logging(self):\n        \"\"\"Take the baseline before top_block.start(), without starting a thread.\n\n        Raises:\n            RuntimeError: If logging is active or sensor discovery fails.\n            OSError: If sensors or the CSV cannot be accessed.\n            ValueError: If a numeric sensor reading is invalid.\n        \"\"\"\n        if self._file is not None:\n            raise RuntimeError(\"Energy logging is already active\")\n        try:\n            self._prepare_logging()\n        except Exception:\n            self.finish_logging()\n            raise\n\n    def start_monitoring(self, sample_counter):\n        \"\"\"Start sampling after the native source has initialized its counters.\n\n        Args:\n            sample_counter (Callable[[], int]): Native IQ sample counter, polled\n                once per sensor snapshot rather than per streaming buffer.\n\n        Raises:\n            RuntimeError: If logging is unprepared or monitoring is already active.\n        \"\"\"\n        if self._file is None or self._thread.ident is not None:\n            raise RuntimeError(\"Prepare logging once before starting monitoring\")\n        self._counter = sample_counter\n        self._thread.start()\n"
+      \        atexit.register(self.finish_logging)\n        return True\n\n    def\
+      \ _monitor(self):\n        \"\"\"Sample periodically until finalization requests\
+      \ a stop.\n\n        Waiting on the event lets finalization wake the thread\
+      \ immediately.\n        Sensor or write errors are saved and re-raised by finish_logging(),\n\
+      \        leaving the CSV without an end marker.\n        \"\"\"\n        while\
+      \ not self._done.wait(self.interval):\n            try:\n                self._sample(\"\
+      sample\")\n            except Exception as error:\n                self._error\
+      \ = error\n                return\n\n    def finish_logging(self):\n       \
+      \ \"\"\"Stop monitoring, take the final reading, and close the CSV.\n\n    \
+      \    Call after top_block.wait() returns. This method is idempotent after\n\
+      \        the CSV closes. The monitor is joined before the final reading to\n\
+      \        prevent concurrent writes. Cleanup closes the CSV even on failure.\n\
+      \n        Raises:\n            RuntimeError: If background sampling failed.\n\
+      \            OSError: If the final sensor read or CSV write fails.\n       \
+      \     ValueError: If a final numeric sensor attribute cannot be parsed.\n  \
+      \      \"\"\"\n        # The IQ branch can finish before the decoder. Do not\
+      \ finalize in\n        # block.stop(): the flowgraph's after-stop snippet calls\
+      \ this after wait().\n        if self._file is None:\n            self._close_sensors()\n\
+      \            return\n        self._done.set()\n        if self._thread is not\
+      \ None and self._thread.ident is not None:\n            self._thread.join()\n\
+      \        try:\n            if self._error is not None:\n                raise\
+      \ RuntimeError(\"Energy sampling failed\") from self._error\n            self._sample(\"\
+      end\")\n        finally:\n            self._file.close()\n            self._file\
+      \ = None\n            self._close_sensors()\n            atexit.unregister(self.finish_logging)\n\
+      \n    def begin_logging(self):\n        \"\"\"Take the baseline before top_block.start(),\
+      \ without starting a thread.\n\n        Raises:\n            RuntimeError: If\
+      \ logging is active or sensor discovery fails.\n            OSError: If sensors\
+      \ or the CSV cannot be accessed.\n            ValueError: If a numeric sensor\
+      \ reading is invalid.\n        \"\"\"\n        if self._file is not None:\n\
+      \            raise RuntimeError(\"Energy logging is already active\")\n    \
+      \    try:\n            self._prepare_logging()\n        except Exception:\n\
+      \            self.finish_logging()\n            raise\n\n    def start_monitoring(self,\
+      \ sample_counter):\n        \"\"\"Start sampling after the native source has\
+      \ initialized its counters.\n\n        Args:\n            sample_counter (Callable[[],\
+      \ int]): Native IQ sample counter, polled\n                once per sensor snapshot\
+      \ rather than per streaming buffer.\n\n        Raises:\n            RuntimeError:\
+      \ If logging is unprepared or monitoring is already active.\n        \"\"\"\n\
+      \        if self._file is None or self._thread.ident is not None:\n        \
+      \    raise RuntimeError(\"Prepare logging once before starting monitoring\"\
+      )\n        self._counter = sample_counter\n        self._thread.start()\n"
     affinity: ''
     alias: ''
     comment: No stream ports; lifecycle snippets control low-rate native-counter polling.
@@ -420,15 +462,16 @@ blocks:
   states:
     _io_cache: '(''Run Energy Logger'', ''blk'', [(''csv_path'', "''original_energy.csv''"),
       (''interval'', ''0.5''), (''rapl_path'', "''/sys/class/powercap/intel-rapl:0''"),
-      (''power_supply_path'', "''/sys/class/power_supply''")], [], [], "Log package energy and unplugged system power while consuming IQ data.\n\n    GNU
-      Radio starts the monitor before streaming. The flowgraph''s after-stop\n    snippet
-      calls finish_logging() after top_block.wait() so measurement also\n    includes
-      downstream decoding after this sink reaches EOF.\n\n    Attributes:\n        csv_path
+      (''power_supply_path'', "''/sys/class/power_supply''")], [], [], ''Log energy
+      using low-rate polling, without any streaming ports.\n\n    Lifecycle snippets
+      prepare the baseline before streaming, start the sampler\n    after native counters
+      are initialized, and finalize after top_block.wait().\n    No Python work callback
+      or extra IQ buffer reader is scheduled.\n\n    Attributes:\n        csv_path
       (Path): CSV destination, overwritten at each start.\n        interval (float):
       Requested delay between sensor readings in seconds.\n        rapl (Path): RAPL
       package domain directory.\n        supplies (Path): ACPI power supply directory.\n        samples
-      (int): Number of complex IQ samples consumed by this sink.\n    ", [''csv_path'',
-      ''interval''])'
+      (int): Number of complex IQ samples last polled from the native counter.\n    '',
+      [''csv_path'', ''interval''])'
     bus_sink: false
     bus_source: false
     bus_structure: null

@@ -1,0 +1,498 @@
+options:
+  parameters:
+    author: ''
+    catch_exceptions: 'True'
+    category: '[GRC Hier Blocks]'
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: CPU and NVIDIA GPU energy measurement on the 20 MHz stress-test capture.
+    gen_cmake: 'On'
+    gen_linking: dynamic
+    generate_options: no_gui
+    hier_block_src_path: '.:'
+    id: wifi_rx
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: ''
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: run
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: GR-WiFi Energy Experiment
+    window_size: (1000,1000)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 12.0]
+    rotation: 0
+    state: enabled
+
+blocks:
+- name: data_dir
+  id: variable
+  parameters:
+    comment: Capture root on this machine.
+    value: "\"/home/piloteer/\uBC14\uD0D5\uD654\uBA74/WiFi_Paper_Data/SUB\""
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [280, 76.0]
+    rotation: 0
+    state: enabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/stress_test.sigmf"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [616, 28.0]
+    rotation: 0
+    state: disabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/206.sigmf"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [800, 12.0]
+    rotation: 0
+    state: enabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/room_20260927.sigmf"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [800, 76.0]
+    rotation: 0
+    state: disabled
+- name: samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: 20e6
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [192, 12.0]
+    rotation: 0
+    state: enabled
+- name: blocks_file_source_0
+  id: blocks_file_source
+  parameters:
+    affinity: ''
+    alias: ''
+    begin_tag: pmt.PMT_NIL
+    comment: ''
+    file: file_path+"-data"
+    length: '0'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    offset: '0'
+    repeat: 'False'
+    type: short
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [952, 4.0]
+    rotation: 0
+    state: enabled
+- name: blocks_interleaved_short_to_complex_0
+  id: blocks_interleaved_short_to_complex
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    scale_factor: '32768'
+    swap: 'False'
+    vector_input: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1112, 28.0]
+    rotation: 0
+    state: enabled
+- name: blocks_message_debug_0
+  id: blocks_message_debug
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    en_uvec: 'True'
+    log_level: info
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1112, 320.0]
+    rotation: 0
+    state: enabled
+- name: blocks_probe_rate_0
+  id: blocks_probe_rate
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha: '0.15'
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    mintime: '500.0'
+    name: ''
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [808, 328.0]
+    rotation: 0
+    state: enabled
+- name: energy_logger_finish
+  id: snippet
+  parameters:
+    alias: ''
+    code: self.epy_block_energy_logger.finish_logging()
+    comment: Finish after all processing, on EOF or SIGINT/SIGTERM.
+    priority: '0'
+    section: main_after_stop
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [16, 132.0]
+    rotation: 0
+    state: enabled
+- name: energy_logger_prepare
+  id: snippet
+  parameters:
+    alias: ''
+    code: self.epy_block_energy_logger.begin_logging()
+    comment: ''
+    priority: '0'
+    section: main_after_init
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [16, 600]
+    rotation: 0
+    state: enabled
+- name: energy_logger_start
+  id: snippet
+  parameters:
+    alias: ''
+    code: "import time\nprogress = [None, time.monotonic()]\n\ndef finish_at_eof():\n\
+      \    # The installed demodulator can stall on an incomplete final frame.\n \
+      \   # Wait for all IQ/signal processing to finish, then allow decoding\n   \
+      \ # to drain until its native counters have been idle for two seconds.\n   \
+      \ if not all(block.detail().done() for block in (\n            self.blocks_interleaved_short_to_complex_0,\n\
+      \            self.ieee80211_trigger_0, self.ieee80211_sync_0,\n            self.ieee80211_signal_0)):\n\
+      \        return\n    counters = (self.ieee80211_demod_0.nitems_read(0),\n  \
+      \              self.ieee80211_demod_0.nitems_written(0),\n                self.ieee80211_decode_0.nitems_read(0))\n\
+      \    now = time.monotonic()\n    if counters != progress[0]:\n        progress[:]\
+      \ = [counters, now]\n    elif now - progress[1] >= 2.0:\n        self.stop()\n\
+      \nself.epy_block_energy_logger.start_monitoring(\n    lambda: self.blocks_interleaved_short_to_complex_0.nitems_written(0),\n\
+      \    finish_at_eof)\n"
+    comment: ''
+    priority: '0'
+    section: main_after_start
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [16, 680]
+    rotation: 0
+    state: enabled
+- name: epy_block_energy_logger
+  id: epy_block
+  parameters:
+    _source_code: "import atexit\nimport csv\nimport ctypes\nfrom pathlib import Path\n\
+      import threading\nimport time\n\nfrom gnuradio import gr\n\n\nclass blk(gr.basic_block):\n\
+      \    \"\"\"Poll CPU RAPL and NVIDIA NVML without adding streaming ports.\n\n\
+      \    CPU energy is measured by RAPL. GPU energy is a trapezoidal estimate\n\
+      \    from board-power readings, including other processes and idle power.\n\
+      \    \"\"\"\n\n    def __init__(self, csv_path=\"gr_ieee80211_energy.csv\",\
+      \ interval=0.5,\n                 rapl_path=\"/sys/class/powercap/intel-rapl:0\"\
+      , gpu_index=0):\n        gr.basic_block.__init__(self, name=\"Run Energy Logger\"\
+      ,\n                               in_sig=None, out_sig=None)\n        if interval\
+      \ < 0.05:\n            raise ValueError(\"Energy sampling interval must be at\
+      \ least 0.05 s\")\n        self.csv_path = Path(csv_path)\n        self.interval\
+      \ = interval\n        self.rapl = Path(rapl_path)\n        self.gpu_index =\
+      \ gpu_index\n        self.samples = 0\n        self._counter = lambda: 0\n \
+      \       self._sensor_files = {}\n        self._done = threading.Event()\n  \
+      \      self._thread = None\n        self._file = None\n        self._nvml =\
+      \ None\n\n    def _read(self, path):\n        stream = self._sensor_files.get(path)\n\
+      \        if stream is None:\n            stream = path.open(\"r\")\n       \
+      \     self._sensor_files[path] = stream\n        stream.seek(0)\n        return\
+      \ stream.read().strip()\n\n    def _nvml_call(self, name, *args):\n        result\
+      \ = getattr(self._nvml, name)(*args)\n        if result:\n            message\
+      \ = self._nvml.nvmlErrorString(result).decode()\n            raise RuntimeError(f\"\
+      {name}: {message}\")\n\n    def _open_gpu(self):\n        # NVML ships with\
+      \ the NVIDIA driver; no Python package is required.\n        library = ctypes.CDLL(\"\
+      libnvidia-ml.so.1\")\n        signatures = {\n            \"nvmlInit_v2\": [],\
+      \ \"nvmlShutdown\": [],\n            \"nvmlDeviceGetHandleByIndex_v2\": [ctypes.c_uint,\
+      \ ctypes.POINTER(ctypes.c_void_p)],\n            \"nvmlDeviceGetPowerUsage\"\
+      : [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint)],\n            \"nvmlDeviceGetName\"\
+      : [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint],\n            \"nvmlDeviceGetUUID\"\
+      : [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint],\n        }\n        for\
+      \ name, arguments in signatures.items():\n            function = getattr(library,\
+      \ name)\n            function.argtypes = arguments\n            function.restype\
+      \ = ctypes.c_int\n        library.nvmlErrorString.argtypes = [ctypes.c_int]\n\
+      \        library.nvmlErrorString.restype = ctypes.c_char_p\n        self._nvml\
+      \ = library\n        try:\n            self._nvml_call(\"nvmlInit_v2\")\n  \
+      \      except Exception:\n            self._nvml = None\n            raise\n\
+      \        self._gpu = ctypes.c_void_p()\n        self._nvml_call(\"nvmlDeviceGetHandleByIndex_v2\"\
+      , self.gpu_index,\n                        ctypes.byref(self._gpu))\n      \
+      \  name = ctypes.create_string_buffer(96)\n        uuid = ctypes.create_string_buffer(96)\n\
+      \        self._nvml_call(\"nvmlDeviceGetName\", self._gpu, name, len(name))\n\
+      \        self._nvml_call(\"nvmlDeviceGetUUID\", self._gpu, uuid, len(uuid))\n\
+      \        self._gpu_name = name.value.decode()\n        self._gpu_uuid = uuid.value.decode()\n\
+      \n    def _close_sensors(self):\n        for stream in self._sensor_files.values():\n\
+      \            stream.close()\n        self._sensor_files.clear()\n        if\
+      \ self._nvml is not None:\n            try:\n                self._nvml_call(\"\
+      nvmlShutdown\")\n            finally:\n                self._nvml = None\n\n\
+      \    def _sample(self, phase):\n        counter = int(self._read(self.rapl /\
+      \ \"energy_uj\"))\n        now = time.monotonic_ns()\n        self.samples =\
+      \ int(self._counter())\n        power_mw = ctypes.c_uint()\n        self._nvml_call(\"\
+      nvmlDeviceGetPowerUsage\", self._gpu, ctypes.byref(power_mw))\n        gpu_w\
+      \ = power_mw.value / 1000.0\n        cpu_w = \"\"\n        if self._previous\
+      \ is None:\n            self._start_ns = now\n        else:\n            previous_ns,\
+      \ previous_counter, previous_gpu_w = self._previous\n            dt = (now -\
+      \ previous_ns) / 1e9\n            delta = counter - previous_counter\n     \
+      \       if delta < 0:\n                delta += self._range_uj\n           \
+      \ self._cpu_j += delta / 1e6\n            cpu_w = delta / 1e6 / dt\n       \
+      \     self._gpu_j += dt * (previous_gpu_w + gpu_w) / 2\n        self._previous\
+      \ = now, counter, gpu_w\n        self._writer.writerow({\n            \"phase\"\
+      : phase, \"unix_time_ns\": time.time_ns(),\n            \"elapsed_s\": (now\
+      \ - self._start_ns) / 1e9,\n            \"samples_processed\": self.samples,\n\
+      \            \"rapl_domain\": self._domain, \"rapl_energy_uj\": counter,\n \
+      \           \"rapl_max_energy_range_uj\": self._range_uj,\n            \"cpu_energy_j\"\
+      : self._cpu_j, \"cpu_power_w\": cpu_w,\n            \"gpu_index\": self.gpu_index,\
+      \ \"gpu_name\": self._gpu_name,\n            \"gpu_uuid\": self._gpu_uuid, \"\
+      gpu_power_w\": gpu_w,\n            \"gpu_energy_j\": self._gpu_j,\n        })\n\
+      \        if phase != \"sample\" or now - self._last_flush_ns >= 5_000_000_000:\n\
+      \            self._file.flush()\n            self._last_flush_ns = now\n\n \
+      \   def begin_logging(self):\n        \"\"\"Initialize sensors and take a baseline\
+      \ before top_block.start().\"\"\"\n        if self._file is not None:\n    \
+      \        raise RuntimeError(\"Energy logging is already active\")\n        self.samples\
+      \ = 0\n        self._counter = lambda: 0\n        self._previous = None\n  \
+      \      self._cpu_j = self._gpu_j = 0.0\n        self._last_flush_ns = 0\n  \
+      \      self._error = None\n        self._thread = None\n        self._done.clear()\n\
+      \        try:\n            self._range_uj = int(self._read(self.rapl / \"max_energy_range_uj\"\
+      ))\n            self._domain = self._read(self.rapl / \"name\")\n          \
+      \  self._open_gpu()\n            self.csv_path = Path(self.csv_path)\n     \
+      \       self.csv_path.parent.mkdir(parents=True, exist_ok=True)\n          \
+      \  self._file = self.csv_path.open(\"w\", newline=\"\")\n            self._writer\
+      \ = csv.DictWriter(self._file, fieldnames=[\n                \"phase\", \"unix_time_ns\"\
+      , \"elapsed_s\", \"samples_processed\",\n                \"rapl_domain\", \"\
+      rapl_energy_uj\", \"rapl_max_energy_range_uj\",\n                \"cpu_energy_j\"\
+      , \"cpu_power_w\", \"gpu_index\", \"gpu_name\",\n                \"gpu_uuid\"\
+      , \"gpu_power_w\", \"gpu_energy_j\",\n            ])\n            self._writer.writeheader()\n\
+      \            self._sample(\"start\")\n            self._thread = threading.Thread(target=self._monitor,\
+      \ daemon=True)\n        except Exception:\n            if self._file is not\
+      \ None:\n                self._file.close()\n                self._file = None\n\
+      \            self._close_sensors()\n            raise\n        atexit.register(self.finish_logging)\n\
+      \n    def start_monitoring(self, sample_counter, on_poll=None):\n        \"\"\
+      \"Poll the native complex-IQ counter after streaming starts.\"\"\"\n       \
+      \ if self._file is None or self._thread.ident is not None:\n            raise\
+      \ RuntimeError(\"Prepare logging once before starting monitoring\")\n      \
+      \  self._counter = sample_counter\n        self._on_poll = on_poll\n       \
+      \ self._thread.start()\n\n    def _monitor(self):\n        while not self._done.wait(self.interval):\n\
+      \            try:\n                self._sample(\"sample\")\n              \
+      \  if self._on_poll is not None:\n                    self._on_poll()\n    \
+      \        except Exception as error:\n                self._error = error\n \
+      \               return\n\n    def finish_logging(self):\n        \"\"\"Finalize\
+      \ after top_block.wait(), including downstream decoding time.\"\"\"\n      \
+      \  if self._file is None:\n            return\n        self._done.set()\n  \
+      \      if self._thread is not None and self._thread.ident is not None:\n   \
+      \         self._thread.join()\n        try:\n            if self._error is not\
+      \ None:\n                raise RuntimeError(\"Energy sampling failed\") from\
+      \ self._error\n            self._sample(\"end\")\n        finally:\n       \
+      \     self._file.close()\n            self._file = None\n            atexit.unregister(self.finish_logging)\n\
+      \            self._close_sensors()\n"
+    affinity: ''
+    alias: ''
+    comment: No stream ports; RAPL CPU energy and NVML GPU power at 0.5 s intervals.
+    csv_path: data_dir + "/tmp_out/gr_ieee80211_energy.csv"
+    gpu_index: '0'
+    interval: '0.5'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    rapl_path: '"/sys/class/powercap/intel-rapl:0"'
+  states:
+    _io_cache: ('Run Energy Logger', 'blk', [('csv_path', "'gr_ieee80211_energy.csv'"),
+      ('interval', '0.5'), ('rapl_path', "'/sys/class/powercap/intel-rapl:0'"), ('gpu_index',
+      '0')], [], [], 'Poll CPU RAPL and NVIDIA NVML without adding streaming ports.\n\nCPU
+      energy is measured by RAPL. GPU energy is a trapezoidal estimate\nfrom board-power
+      readings, including other processes and idle power.\n', ['csv_path', 'gpu_index',
+      'interval'])
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [264, 420.0]
+    rotation: 0
+    state: enabled
+- name: ieee80211_signal_0_0
+  id: ieee80211_signal
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1120, 208.0]
+    rotation: 0
+    state: enabled
+- name: ieee80211_sync_0_0
+  id: ieee80211_sync
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1008, 176.0]
+    rotation: 0
+    state: enabled
+- name: ieee80211_trigger_0_0
+  id: ieee80211_trigger
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [848, 176.0]
+    rotation: 0
+    state: true
+- name: ieee80211cu_demodcu_0
+  id: ieee80211cu_demodcu
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    ifdebug: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    mugid: '2'
+    mupos: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1264, 200.0]
+    rotation: 0
+    state: true
+- name: network_socket_pdu_0
+  id: network_socket_pdu
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    host: 127.0.0.1
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    mtu: '65535'
+    port: '9527'
+    tcp_no_delay: 'False'
+    type: UDP_CLIENT
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1584, 200.0]
+    rotation: 0
+    state: enabled
+- name: presisocu_0
+  id: presisocu
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [672, 176.0]
+    rotation: 0
+    state: true
+- name: virtual_sink_0
+  id: virtual_sink
+  parameters:
+    alias: ''
+    comment: ''
+    stream_id: iq
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1600, 32.0]
+    rotation: 0
+    state: enabled
+- name: virtual_source_0
+  id: virtual_source
+  parameters:
+    alias: ''
+    comment: ''
+    stream_id: iq
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [32, 272.0]
+    rotation: 0
+    state: enabled
+
+connections:
+- [blocks_file_source_0, '0', blocks_interleaved_short_to_complex_0, '0']
+- [blocks_interleaved_short_to_complex_0, '0', virtual_sink_0, '0']
+- [blocks_probe_rate_0, rate, blocks_message_debug_0, print]
+- [ieee80211_signal_0_0, '0', ieee80211cu_demodcu_0, '0']
+- [ieee80211_sync_0_0, '0', ieee80211_signal_0_0, '0']
+- [ieee80211_trigger_0_0, '0', ieee80211_sync_0_0, '0']
+- [ieee80211cu_demodcu_0, out, network_socket_pdu_0, pdus]
+- [presisocu_0, '0', ieee80211_trigger_0_0, '0']
+- [presisocu_0, '1', ieee80211_sync_0_0, '1']
+- [virtual_source_0, '0', blocks_probe_rate_0, '0']
+- [virtual_source_0, '0', ieee80211_signal_0_0, '1']
+- [virtual_source_0, '0', ieee80211_sync_0_0, '2']
+- [virtual_source_0, '0', presisocu_0, '0']
+
+metadata:
+  file_format: 1
+  grc_version: 3.10.12.0
