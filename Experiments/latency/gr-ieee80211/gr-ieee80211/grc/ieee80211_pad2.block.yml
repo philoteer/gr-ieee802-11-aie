@@ -1,0 +1,27 @@
+id: ieee80211_pad2
+label: Padding 2
+category: '[IEEE 802.11 GR-WiFi]'
+
+templates:
+  imports: from gnuradio import ieee80211
+  make: ieee80211.pad2()
+
+inputs:
+- label: inSig0
+  domain: stream
+  dtype: complex
+- label: inSig1
+  domain: stream
+  dtype: complex
+
+outputs:
+- label: outSig0
+  domain: stream
+  dtype: complex
+- label: outSig1
+  domain: stream
+  dtype: complex
+
+#  'file_format' specifies the version of the GRC yml format used in the file
+#  and should usually not be changed.
+file_format: 1

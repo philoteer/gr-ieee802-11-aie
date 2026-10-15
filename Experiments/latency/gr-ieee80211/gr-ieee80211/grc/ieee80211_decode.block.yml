@@ -1,0 +1,26 @@
+id: ieee80211_decode
+label: Decode
+category: '[IEEE 802.11 GR-WiFi]'
+
+templates:
+  imports: from gnuradio import ieee80211
+  make: ieee80211.decode(${ifdebug})
+
+parameters:
+- id: ifdebug
+  label: Print Debug Info
+  dtype: bool
+  default: 'True'
+
+inputs:
+- label: inLlr
+  domain: stream
+  dtype: float
+
+outputs:
+- domain: message
+  id: out
+
+#  'file_format' specifies the version of the GRC yml format used in the file
+#  and should usually not be changed.
+file_format: 1
