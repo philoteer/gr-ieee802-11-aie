@@ -81,13 +81,18 @@ def update(baseline, pilots, ratio, weights, gate):
 
 def main():
     directory = Path(__file__).parent / 'equalizer/model'
-    cnn, cnn_gate = load(directory / 'channel_cnn_weights.h', [(12, 6, 7), (12, 12, 5), (2, 12, 3)])
+    selection = sys.argv[2] if len(sys.argv) > 2 else 'by_frame'
+    suffix = '_' + selection
+    cnn, cnn_gate = load(directory / f'channel_cnn_weights{suffix}.h', [(12, 6, 7), (12, 12, 5), (2, 12, 3)])
     mlp, mlp_gate = load(directory / 'channel_updater_mlp_weights.h', [(4, 16, 61), (4, 26, 16)])
     rng = np.random.default_rng(43)
     cases, expected = [], []
+    # UINT64_MAX disables gating; its +/-1 integer boundaries cannot be
+    # represented by the C++ double SNR interface. Exercise finite gates only.
+    boundaries = [gate + delta for gate in (cnn_gate, mlp_gate) if gate < 2**53
+                  for delta in (-1, 0, 1)]
     for amplitude in [0, 2**-20, 0.5, 1, 2, 2**20]:
-        for ratio in sorted(set([0, 32, 64, 1600, cnn_gate - 1, cnn_gate, cnn_gate + 1,
-                                 mlp_gate - 1, mlp_gate, mlp_gate + 1, 320000])):
+        for ratio in sorted(set([0, 32, 64, 1600, 320000] + boundaries)):
             first = (rng.normal(size=64) + 1j * rng.normal(size=64)).astype(np.complex64) * amplitude
             second = (rng.normal(size=64) + 1j * rng.normal(size=64)).astype(np.complex64) * amplitude
             pilots = (rng.normal(size=4) + 1j * rng.normal(size=4)).astype(np.complex64) * amplitude
@@ -106,7 +111,7 @@ def main():
             actual_baseline = refine(first, second, actual_ratio, cnn, cnn_gate)
             equalizer = update(actual_baseline, pilots, actual_ratio, mlp, mlp_gate)[OCCUPIED]
             expected.append(np.r_[baseline, corrected, equalizer])
-    result = subprocess.run([sys.argv[1]], input=str(len(cases)) + '\n' + '\n'.join(cases) + '\n',
+    result = subprocess.run([sys.argv[1], selection], input=str(len(cases)) + '\n' + '\n'.join(cases) + '\n',
                             text=True, check=True, capture_output=True)
     actual = np.fromstring(result.stdout, sep=' ').reshape(len(cases), -1, 2)
     actual = actual[:, :, 0] + 1j * actual[:, :, 1]

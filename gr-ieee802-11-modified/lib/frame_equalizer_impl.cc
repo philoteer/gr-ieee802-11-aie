@@ -91,11 +91,15 @@ void frame_equalizer_impl::set_algorithm(Equalizer algo)
         dout << "STA" << std::endl;
         d_equalizer = new equalizer::sta();
         break;
-    case CNN:
-        d_equalizer = new equalizer::cnn();
+    case CNN_FRAME:
+    case CNN_FRAME_MLP:
+        d_equalizer = new equalizer::cnn(algo == CNN_FRAME_MLP,
+            equalizer::channel_ai_model::weights::by_frame);
         break;
-    case CNN_MLP:
-        d_equalizer = new equalizer::cnn(true);
+    case CNN_CHANNEL:
+    case CNN_CHANNEL_MLP:
+        d_equalizer = new equalizer::cnn(algo == CNN_CHANNEL_MLP,
+            equalizer::channel_ai_model::weights::by_channel);
         break;
     default:
         throw std::runtime_error("Algorithm not implemented");

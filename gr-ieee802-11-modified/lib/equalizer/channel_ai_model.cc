@@ -1,10 +1,14 @@
 #include "channel_ai_model.h"
-#include "model/channel_cnn_weights.h"
+#include "model/channel_cnn_weights_by_frame.h"
 #include "model/channel_updater_mlp_weights.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <limits>
+
+namespace channel_model {
+#include "model/channel_cnn_weights_by_channel.h"
+}
 
 namespace gr {
 namespace ieee802_11 {
@@ -60,8 +64,18 @@ void convolution(const Eigen::Matrix<float, Inputs, 70, Eigen::RowMajor>& input,
 
 }
 
-channel_ai_model::channel_ai_model()
+channel_ai_model::channel_ai_model(weights model)
 {
+    d_w1 = channel_cnn_weights::kW1;
+    d_w2 = channel_cnn_weights::kW2;
+    d_w3 = channel_cnn_weights::kW3;
+    d_gate = channel_cnn_weights::kGateSnrRatioX16;
+    if (model == weights::by_channel) {
+        d_w1 = channel_model::channel_cnn_weights::kW1;
+        d_w2 = channel_model::channel_cnn_weights::kW2;
+        d_w3 = channel_model::channel_cnn_weights::kW3;
+        d_gate = channel_model::channel_cnn_weights::kGateSnrRatioX16;
+    }
     d_input.setZero();
     d_hidden0.setZero();
     d_hidden1.setZero();
@@ -103,7 +117,7 @@ float channel_ai_model::snr_feature(double ratio_x16)
 void channel_ai_model::refine(const complex* first, const complex* second,
                               double ratio_x16, complex* channel)
 {
-    if (!(ratio_x16 < channel_cnn_weights::kGateSnrRatioX16))
+    if (!(ratio_x16 < d_gate))
         return;
     double maximum = 0;
     for (int bin = 6; bin <= 58; ++bin) {
@@ -132,9 +146,9 @@ void channel_ai_model::refine(const complex* first, const complex* second,
         }
         d_input(5, bin + 3) = snr_feature(ratio_x16);
     }
-    convolution<6, 12, 7, true>(d_input, d_hidden0, channel_cnn_weights::kW1);
-    convolution<12, 12, 5, true>(d_hidden0, d_hidden1, channel_cnn_weights::kW2);
-    convolution<12, 2, 3, false>(d_hidden1, d_residual, channel_cnn_weights::kW3);
+    convolution<6, 12, 7, true>(d_input, d_hidden0, d_w1);
+    convolution<12, 12, 5, true>(d_hidden0, d_hidden1, d_w2);
+    convolution<12, 2, 3, false>(d_hidden1, d_residual, d_w3);
     for (int bin = 0; bin < 64; ++bin) {
         if (occupied(bin))
             channel[bin] += complex(d_residual(0, bin + 3) * scale,

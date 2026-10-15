@@ -10,14 +10,15 @@ import yaml
 def main():
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description="Exercise CPU equalizers with the existing GRC symbol-conformance corpus")
-    parser.add_argument('--source', type=Path, default=root.parent / 'gr-ieee-802-11-aie/stage43_v2/test/frame_equalizer/test-symbols.grc')
+    parser.add_argument('--source', type=Path, default=root.parent / 'AI-model-CNN-Channel-est/test/frame_equalizer/test-symbols.grc')
     parser.add_argument('--build', type=Path, default=root / 'build')
     parser.add_argument('--debug-block', action='store_true')
     args = parser.parse_args()
     output = args.build.resolve() / 'channel_ai_grc'
     output.mkdir(parents=True, exist_ok=True)
     for active in (False, True):
-        for algorithm in ('LS', 'LMS', 'STA', 'CNN', 'CNN_MLP'):
+        for algorithm in ('LS', 'LMS', 'STA', 'CNN_FRAME',
+                          'CNN_CHANNEL', 'CNN_FRAME_MLP', 'CNN_CHANNEL_MLP'):
             graph = yaml.safe_load(args.source.read_text())
             removed = {'mlir_aie_frame_equalizer_npu', 'blocks_stream_to_vector_npu',
                        'blocks_npu_decisions_sink', 'blocks_vector_to_stream'}
@@ -29,7 +30,9 @@ def main():
                 if block['name'] == 'algorithm':
                     params['value'] = repr(algorithm.lower())
                 elif block['name'] == 'algorithm_id':
-                    params['value'] = str({'LS': 0, 'LMS': 1, 'STA': 3, 'CNN': 4, 'CNN_MLP': 5}[algorithm])
+                    params['value'] = str({'LS': 0, 'LMS': 1, 'STA': 3,
+                                           'CNN_FRAME': 6, 'CNN_CHANNEL': 7,
+                                           'CNN_FRAME_MLP': 8, 'CNN_CHANNEL_MLP': 9}[algorithm])
                 elif block['name'] == 'ieee802_11_frame_equalizer_reference' and args.debug_block:
                     block['id'] = 'ieee802_11_frame_equalizer_debug'
                 elif block['name'] == 'zz_build_guard_and_impairment':
@@ -69,9 +72,9 @@ sys.path.insert(0, __import__('os').path.dirname(sys.argv[2]))
 import ieee802_11_python
 sys.modules['ieee802_11'] = ieee802_11_python
 for factory in (ieee802_11_python.frame_equalizer, ieee802_11_python.frame_equalizer_debug):
-    block = factory(ieee802_11_python.CNN, 2.417e9, 20e6, False, False)
-    block.set_algorithm(ieee802_11_python.CNN_MLP)
-    block.set_algorithm(ieee802_11_python.CNN)
+    block = factory(ieee802_11_python.CNN_FRAME, 2.417e9, 20e6, False, False)
+    for name in ('CNN_CHANNEL', 'CNN_FRAME_MLP', 'CNN_CHANNEL_MLP', 'CNN_FRAME'):
+        block.set_algorithm(getattr(ieee802_11_python, name))
     del block
 runpy.run_path(sys.argv[2], run_name='__main__')
 """

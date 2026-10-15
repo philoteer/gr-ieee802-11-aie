@@ -116,8 +116,10 @@ if(MSVC)
 else()
     target_compile_options(qa_channel_ai PRIVATE -UNDEBUG)
 endif()
-add_test(NAME qa_channel_ai COMMAND ${PYTHON_EXECUTABLE}
-    ${CMAKE_CURRENT_SOURCE_DIR}/qa_channel_ai.py $<TARGET_FILE:qa_channel_ai>)
+foreach(split by_frame by_channel)
+    add_test(NAME qa_channel_ai_${split} COMMAND ${PYTHON_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/qa_channel_ai.py $<TARGET_FILE:qa_channel_ai> ${split})
+endforeach()
 
 # If your unit tests require special include paths, add them here
 #include_directories()

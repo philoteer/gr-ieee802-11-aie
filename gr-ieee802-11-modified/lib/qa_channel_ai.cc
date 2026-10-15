@@ -106,8 +106,12 @@ int main(int argc, char** argv)
         return 0;
     }
     self_test();
-    channel_ai_model model;
-    exposed_cnn estimator(true);
+    const auto selection = argc > 1 && std::string(argv[1]) == "by_frame"
+        ? channel_ai_model::weights::by_frame
+        : argc > 1 && std::string(argv[1]) == "by_channel"
+            ? channel_ai_model::weights::by_channel : channel_ai_model::weights::by_frame;
+    channel_ai_model model(selection);
+    exposed_cnn estimator(true, selection);
     std::cout << std::setprecision(9);
     int cases;
     std::cin >> cases;

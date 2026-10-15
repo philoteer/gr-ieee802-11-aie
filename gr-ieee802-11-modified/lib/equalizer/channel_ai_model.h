@@ -12,7 +12,8 @@ class channel_ai_model
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     using complex = std::complex<float>;
-    channel_ai_model();
+    enum class weights { by_frame, by_channel };
+    explicit channel_ai_model(weights model = weights::by_frame);
     void refine(const complex* first, const complex* second, double ratio_x16,
                 complex* channel);
     void update(const complex* baseline, const complex* pilots, double ratio_x16,
@@ -22,6 +23,10 @@ public:
     static float snr_feature(double ratio_x16);
 
 private:
+    const float* d_w1;
+    const float* d_w2;
+    const float* d_w3;
+    double d_gate;
     Eigen::Matrix<float, 6, 70, Eigen::RowMajor> d_input;
     Eigen::Matrix<float, 12, 70, Eigen::RowMajor> d_hidden0;
     Eigen::Matrix<float, 12, 70, Eigen::RowMajor> d_hidden1;
