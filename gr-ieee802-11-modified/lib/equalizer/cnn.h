@@ -13,7 +13,8 @@ class cnn : public base
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     explicit cnn(bool update = false,
-                 channel_ai_model::weights model = channel_ai_model::weights::by_frame);
+                 channel_ai_model::weights model = channel_ai_model::weights::by_frame,
+                 channel_ai_model::arithmetic mode = channel_ai_model::arithmetic::float32);
     void equalize(gr_complex* in, int n, gr_complex* symbols, uint8_t* bits,
                   std::shared_ptr<gr::digital::constellation> mod) override;
     double get_snr() override { return d_snr; }

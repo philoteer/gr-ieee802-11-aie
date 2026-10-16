@@ -23,13 +23,13 @@ void require(bool condition)
         throw std::runtime_error("channel estimator assertion failed");
 }
 
-void self_test()
+void self_test(channel_ai_model::arithmetic mode)
 {
     const std::shared_ptr<gr::digital::constellation> mods[] = {
         constellation_bpsk::make(), constellation_qpsk::make(),
         constellation_16qam::make(), constellation_64qam::make()};
     for (bool updater : {false, true}) {
-        exposed_cnn estimator(updater);
+        exposed_cnn estimator(updater, channel_ai_model::weights::by_frame, mode);
         for (const auto& mod : mods) {
             gr_complex input[64], symbols[48];
             uint8_t bits[48];
@@ -67,9 +67,9 @@ void self_test()
     }
 }
 
-void benchmark()
+void benchmark(channel_ai_model::weights selection, channel_ai_model::arithmetic mode)
 {
-    channel_ai_model model;
+    channel_ai_model model(selection, mode);
     gr_complex first[64] = {}, second[64] = {}, baseline[64] = {}, channel[64];
     gr_complex pilots[4] = {{0.8f, 0.1f}, {0.9f, -0.1f}, {1, 0.2f}, {0.7f, 0}};
     for (int bin = 6; bin <= 58; ++bin) {
@@ -101,17 +101,20 @@ void benchmark()
 
 int main(int argc, char** argv)
 {
+    const bool integer = std::find_if(argv + 1, argv + argc, [](const char* arg) {
+        return std::string(arg) == "--int8";
+    }) != argv + argc;
+    const auto mode = integer ? channel_ai_model::arithmetic::int8 : channel_ai_model::arithmetic::float32;
+    const auto selection = std::find_if(argv + 1, argv + argc, [](const char* arg) {
+        return std::string(arg) == "by_channel";
+    }) != argv + argc ? channel_ai_model::weights::by_channel : channel_ai_model::weights::by_frame;
     if (argc > 1 && std::string(argv[1]) == "--benchmark") {
-        benchmark();
+        benchmark(selection, mode);
         return 0;
     }
-    self_test();
-    const auto selection = argc > 1 && std::string(argv[1]) == "by_frame"
-        ? channel_ai_model::weights::by_frame
-        : argc > 1 && std::string(argv[1]) == "by_channel"
-            ? channel_ai_model::weights::by_channel : channel_ai_model::weights::by_frame;
-    channel_ai_model model(selection);
-    exposed_cnn estimator(true, selection);
+    self_test(mode);
+    channel_ai_model model(selection, mode);
+    exposed_cnn estimator(true, selection, mode);
     std::cout << std::setprecision(9);
     int cases;
     std::cin >> cases;

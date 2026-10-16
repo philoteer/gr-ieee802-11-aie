@@ -18,6 +18,79 @@ simulations.
 
 # Development
 
+## Int8-weight channel estimators
+
+The normal and debug frame equalizers expose four additional algorithms in
+C++, Python, and GNU Radio Companion:
+
+| Algorithm | Initial channel estimate | Payload channel update |
+| --- | --- | --- |
+| `CNN_FRAME_INT8` | Frame-split int8 CNN | None |
+| `CNN_CHANNEL_INT8` | Channel-split int8 CNN | None |
+| `CNN_FRAME_MLP_INT8` | Frame-split int8 CNN | Frame-split int8 MLP |
+| `CNN_CHANNEL_MLP_INT8` | Channel-split int8 CNN | Channel-split int8 MLP |
+
+For example, select `ieee802_11.CNN_FRAME_MLP_INT8` as the frame equalizer's
+algorithm after rebuilding and installing this module. The enum values are
+10 through 13, respectively. Algorithm switching also supports these options.
+
+These use the exported NPU weights and SNR gates from
+`AI-model-CNN-Channel-est/kernel/channel_estimator/model/`. The neural-network
+MACs are integer operations: signed int8 Q7 weights, Q15 activations, int64
+accumulation, floor shifts by 7, and saturation after each layer. CNN
+activations saturate to int32; MLP activations saturate to int16, with ReLU on
+hidden layers. GNU Radio's complex samples, normalization, residual addition,
+SNR measurement, and symbol equalization retain their floating-point interface.
+Thus this implements the NPU network arithmetic at a float/Q15 boundary;
+whole-receiver bit-exact equivalence to the NPU's integer FFT/input pipeline is
+not implied. The NPU exports have different gates from the trained float
+exports, so inference may be enabled at different SNRs.
+
+The compact CPU weight headers are checked in. To refresh them after changing
+the NPU exports, run `python3 utils/export_channel_int8.py` from this directory
+(NumPy required). The script transposes the padded NPU MLP tensors into compact
+output-major order and records source hashes; normal builds need no NPU tools.
+
+### Verification and CPU performance
+
+With a Release build in `build/`:
+
+```sh
+ctest --test-dir build -R qa_channel_ai --output-on-failure
+python3 utils/test_channel_ai_grc.py --build build
+python3 utils/test_channel_ai_grc.py --build build --debug-block
+build/lib/qa_channel_ai --benchmark by_frame
+build/lib/qa_channel_ai --benchmark by_frame --int8
+```
+
+Use `by_channel` instead of `by_frame` to benchmark the other weights. The
+reference tests load the original NPU exports independently and exercise zero
+inputs, large/small amplitudes, normalization boundaries, SNR gate boundaries,
+pilot polarity, resets, constellations, and allocation-free inference. Both
+block variants passed the GRC symbol corpus at all eight rates, with active and
+gated inference. These checks do not establish BER/PER equivalence over a noisy
+channel sweep.
+
+Measured on an AMD Ryzen 5 8640HS with GCC 13.3, CMake Release defaults (no
+`-march=native`), pinned to CPU 2: median microseconds per active call, taking
+the median of three runs, each with 100 warmups and 1,000 measured calls:
+
+| Weights | CNN float | CNN int8 | MLP float | MLP int8 |
+| --- | ---: | ---: | ---: | ---: |
+| Frame split | 6.27 | 23.80 | 0.61 | 2.71 |
+| Channel split | 6.26 | 23.88 | 0.59 | 2.71 |
+
+This portable implementation is about **3.8x slower for the CNN and 4.4–4.6x
+slower for the MLP**. Float Eigen/SIMD is efficient for these small models;
+integer conversion, wide accumulators, shifts, and saturation add work. This
+code does not use a CPU-specific packed int8 dot-product backend. Such a backend
+could improve speed, but standard int8-by-int8 kernels would also quantize the
+activations more aggressively than this Q15/Q7 contract. The compact int8 tables
+use one quarter of the float tables' weight storage (6,864 versus 27,456 bytes
+per CNN+MLP pair); both sets are compiled into this module, and activation
+buffers are not reduced. For CPU throughput, the measured float versions are
+preferable; the integer options provide a useful quantized CPU reference.
+
 Like GNU Radio, this module uses *maint* branches for development.
 These branches are supposed to be used with the corresponding GNU Radio
 branches. This means: the *maint-3.7* branch is compatible with GNU Radio 3.7,

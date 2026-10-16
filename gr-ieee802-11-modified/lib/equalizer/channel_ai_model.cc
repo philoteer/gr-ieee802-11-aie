@@ -1,6 +1,8 @@
 #include "channel_ai_model.h"
 #include "model/channel_cnn_weights_by_frame.h"
 #include "model/channel_updater_mlp_weights_by_frame.h"
+#include "model/channel_int8_weights_by_frame.h"
+#include "model/channel_int8_weights_by_channel.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -18,6 +20,41 @@ namespace {
 
 constexpr float q15_max = 32767.0f / 32768.0f;
 constexpr int pilot_bins[] = {11, 25, 39, 53};
+
+// Explicit floor division gives arithmetic-shift semantics even before C++20.
+std::int64_t shift_q7(std::int64_t value)
+{
+    return value >= 0 ? value / 128 : -((-value + 127) / 128);
+}
+
+std::int32_t quantize_q15(float value)
+{
+    return static_cast<std::int32_t>(std::floor(
+        std::max(-32768.0, std::min(32767.0, double(value) * 32768))));
+}
+
+template <int Inputs, int Outputs, int Taps, bool Relu>
+void convolution_int8(const Eigen::Matrix<std::int32_t, Inputs, 70, Eigen::RowMajor>& input,
+                      Eigen::Matrix<std::int32_t, Outputs, 70, Eigen::RowMajor>& output,
+                      const std::int8_t* weights)
+{
+    for (int out = 0; out < Outputs; ++out) {
+        std::int64_t sums[64] = {};
+        for (int in = 0; in < Inputs; ++in) {
+            for (int tap = 0; tap < Taps; ++tap) {
+                const auto* source = input.data() + in * 70 + 3 + tap - Taps / 2;
+                const std::int64_t weight = weights[(out * Inputs + in) * Taps + tap];
+                for (int bin = 0; bin < 64; ++bin)
+                    sums[bin] += source[bin] * weight;
+            }
+        }
+        for (int bin = 0; bin < 64; ++bin) {
+            const auto value = shift_q7(sums[bin]);
+            output(out, bin + 3) = static_cast<std::int32_t>(std::max<std::int64_t>(
+                Relu ? 0 : INT32_MIN, std::min<std::int64_t>(INT32_MAX, value)));
+        }
+    }
+}
 static_assert(sizeof(channel_cnn_weights::kW1) / sizeof(float) == 12 * 6 * 7,
               "CNN first-layer shape mismatch");
 static_assert(sizeof(channel_cnn_weights::kW2) / sizeof(float) == 12 * 12 * 5,
@@ -65,7 +102,7 @@ void convolution(const Eigen::Matrix<float, Inputs, 70, Eigen::RowMajor>& input,
 
 }
 
-channel_ai_model::channel_ai_model(weights model)
+channel_ai_model::channel_ai_model(weights model, arithmetic mode) : d_mode(mode)
 {
     d_w1 = channel_cnn_weights::kW1;
     d_w2 = channel_cnn_weights::kW2;
@@ -83,6 +120,26 @@ channel_ai_model::channel_ai_model(weights model)
         d_mlp_w2 = channel_model::channel_updater_weights::kW2;
         d_mlp_gate = channel_model::channel_updater_weights::kGateSnrRatioX16;
     }
+    d_qw1 = int8_by_frame::cnn_w1;
+    d_qw2 = int8_by_frame::cnn_w2;
+    d_qw3 = int8_by_frame::cnn_w3;
+    d_qmlp_w1 = int8_by_frame::mlp_w1;
+    d_qmlp_w2 = int8_by_frame::mlp_w2;
+    if (model == weights::by_channel) {
+        d_qw1 = int8_by_channel::cnn_w1;
+        d_qw2 = int8_by_channel::cnn_w2;
+        d_qw3 = int8_by_channel::cnn_w3;
+        d_qmlp_w1 = int8_by_channel::mlp_w1;
+        d_qmlp_w2 = int8_by_channel::mlp_w2;
+    }
+    if (mode == arithmetic::int8) {
+        d_gate = model == weights::by_frame ? int8_by_frame::cnn_gate : int8_by_channel::cnn_gate;
+        d_mlp_gate = model == weights::by_frame ? int8_by_frame::mlp_gate : int8_by_channel::mlp_gate;
+    }
+    d_qinput.setZero();
+    d_qhidden0.setZero();
+    d_qhidden1.setZero();
+    d_qresidual.setZero();
     d_input.setZero();
     d_hidden0.setZero();
     d_hidden1.setZero();
@@ -153,6 +210,10 @@ void channel_ai_model::refine(const complex* first, const complex* second,
         }
         d_input(5, bin + 3) = snr_feature(ratio_x16);
     }
+    if (d_mode == arithmetic::int8) {
+        refine_int8(scale, channel);
+        return;
+    }
     convolution<6, 12, 7, true>(d_input, d_hidden0, d_w1);
     convolution<12, 12, 5, true>(d_hidden0, d_hidden1, d_w2);
     convolution<12, 2, 3, false>(d_hidden1, d_residual, d_w3);
@@ -162,6 +223,44 @@ void channel_ai_model::refine(const complex* first, const complex* second,
                                     d_residual(1, bin + 3) * scale);
         else
             channel[bin] = 0;
+    }
+}
+
+void channel_ai_model::refine_int8(double scale, complex* channel)
+{
+    for (int in = 0; in < 6; ++in)
+        for (int bin = 0; bin < 64; ++bin)
+            d_qinput(in, bin + 3) = quantize_q15(d_input(in, bin + 3));
+    convolution_int8<6, 12, 7, true>(d_qinput, d_qhidden0, d_qw1);
+    convolution_int8<12, 12, 5, true>(d_qhidden0, d_qhidden1, d_qw2);
+    convolution_int8<12, 2, 3, false>(d_qhidden1, d_qresidual, d_qw3);
+    for (int bin = 0; bin < 64; ++bin) {
+        if (occupied(bin))
+            channel[bin] += complex(d_qresidual(0, bin + 3) * (scale / 32768),
+                                    d_qresidual(1, bin + 3) * (scale / 32768));
+        else
+            channel[bin] = 0;
+    }
+}
+
+void channel_ai_model::update_int8(int group)
+{
+    std::int32_t features[61], hidden[16];
+    for (int in = 0; in < 61; ++in)
+        features[in] = quantize_q15(d_features(in));
+    for (int out = 0; out < 16; ++out) {
+        std::int64_t sum = 0;
+        for (int in = 0; in < 61; ++in)
+            sum += std::int64_t(features[in]) * d_qmlp_w1[(group * 16 + out) * 61 + in];
+        hidden[out] = static_cast<std::int32_t>(std::max<std::int64_t>(0,
+            std::min<std::int64_t>(32767, shift_q7(sum))));
+    }
+    for (int out = 0; out < 26; ++out) {
+        std::int64_t sum = 0;
+        for (int in = 0; in < 16; ++in)
+            sum += std::int64_t(hidden[in]) * d_qmlp_w2[(group * 26 + out) * 16 + in];
+        d_output(out) = std::max<std::int64_t>(-32768,
+            std::min<std::int64_t>(32767, shift_q7(sum))) / 32768.0f;
     }
 }
 
@@ -183,6 +282,14 @@ void channel_ai_model::update(const complex* baseline, const complex* pilots,
         const complex delta = pilots[pilot] - baseline[pilot_bins[pilot]];
         d_features(52 + 2 * pilot) = std::max(-1.0, std::min(double(q15_max), delta.real() / scale));
         d_features(53 + 2 * pilot) = std::max(-1.0, std::min(double(q15_max), delta.imag() / scale));
+        if (d_mode == arithmetic::int8) {
+            // AIE subtracts individually normalized Q15 pilot and baseline values.
+            const auto base = baseline[pilot_bins[pilot]];
+            d_features(52 + 2 * pilot) = std::max(-32768, std::min(32767,
+                quantize_q15(pilots[pilot].real() / scale) - quantize_q15(base.real() / scale))) / 32768.0f;
+            d_features(53 + 2 * pilot) = std::max(-32768, std::min(32767,
+                quantize_q15(pilots[pilot].imag() / scale) - quantize_q15(base.imag() / scale))) / 32768.0f;
+        }
     }
     d_features(60) = snr_feature(ratio_x16);
     for (int group = 0; group < 4; ++group) {
@@ -195,10 +302,14 @@ void channel_ai_model::update(const complex* baseline, const complex* pilots,
         using Second = Eigen::Matrix<float, 26, 16, Eigen::RowMajor>;
         const Eigen::Map<const First> w1(d_mlp_w1 + group * 16 * 61);
         const Eigen::Map<const Second> w2(d_mlp_w2 + group * 26 * 16);
-        d_hidden.noalias() = w1 * d_features;
-        d_hidden = d_hidden.cwiseMax(0.0f).cwiseMin(q15_max);
-        d_output.noalias() = w2 * d_hidden;
-        d_output = d_output.cwiseMax(-1.0f).cwiseMin(q15_max);
+        if (d_mode == arithmetic::int8) {
+            update_int8(group);
+        } else {
+            d_hidden.noalias() = w1 * d_features;
+            d_hidden = d_hidden.cwiseMax(0.0f).cwiseMin(q15_max);
+            d_output.noalias() = w2 * d_hidden;
+            d_output = d_output.cwiseMax(-1.0f).cwiseMin(q15_max);
+        }
         const int start = half_start + (group % 2) * 13;
         for (int bin = 0; bin < 13; ++bin)
             channel[start + bin] += complex(d_output(2 * bin) * scale,

@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(frame_equalizer.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(3f691e72f14aa0d106abf54599f065f4)                     */
+/* BINDTOOL_HEADER_FILE_HASH(11efebd33dfa5c7038275d91b208c9aa)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -80,6 +80,10 @@ void bind_frame_equalizer(py::module& m)
         .value("CNN_CHANNEL", ::gr::ieee802_11::CNN_CHANNEL)
         .value("CNN_FRAME_MLP", ::gr::ieee802_11::CNN_FRAME_MLP)
         .value("CNN_CHANNEL_MLP", ::gr::ieee802_11::CNN_CHANNEL_MLP)
+        .value("CNN_FRAME_INT8", ::gr::ieee802_11::CNN_FRAME_INT8)
+        .value("CNN_CHANNEL_INT8", ::gr::ieee802_11::CNN_CHANNEL_INT8)
+        .value("CNN_FRAME_MLP_INT8", ::gr::ieee802_11::CNN_FRAME_MLP_INT8)
+        .value("CNN_CHANNEL_MLP_INT8", ::gr::ieee802_11::CNN_CHANNEL_MLP_INT8)
         .export_values()
     ;
 
@@ -88,5 +92,3 @@ void bind_frame_equalizer(py::module& m)
 
 
 }
-
-

@@ -35,6 +35,10 @@ enum Equalizer {
     CNN_CHANNEL = 7,
     CNN_FRAME_MLP = 8,
     CNN_CHANNEL_MLP = 9,
+    CNN_FRAME_INT8 = 10,
+    CNN_CHANNEL_INT8 = 11,
+    CNN_FRAME_MLP_INT8 = 12,
+    CNN_CHANNEL_MLP_INT8 = 13,
 };
 
 

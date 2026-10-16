@@ -6,7 +6,8 @@ namespace gr {
 namespace ieee802_11 {
 namespace equalizer {
 
-cnn::cnn(bool update, channel_ai_model::weights model) : d_update(update), d_model(model)
+cnn::cnn(bool update, channel_ai_model::weights model, channel_ai_model::arithmetic mode)
+    : d_update(update), d_model(model, mode)
 {
     std::fill(d_H, d_H + 64, gr_complex(0));
 }

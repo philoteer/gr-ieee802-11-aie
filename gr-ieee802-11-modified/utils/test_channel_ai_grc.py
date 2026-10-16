@@ -18,7 +18,9 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     for active in (False, True):
         for algorithm in ('LS', 'LMS', 'STA', 'CNN_FRAME',
-                          'CNN_CHANNEL', 'CNN_FRAME_MLP', 'CNN_CHANNEL_MLP'):
+                          'CNN_CHANNEL', 'CNN_FRAME_MLP', 'CNN_CHANNEL_MLP',
+                          'CNN_FRAME_INT8', 'CNN_CHANNEL_INT8',
+                          'CNN_FRAME_MLP_INT8', 'CNN_CHANNEL_MLP_INT8'):
             graph = yaml.safe_load(args.source.read_text())
             removed = {'mlir_aie_frame_equalizer_npu', 'blocks_stream_to_vector_npu',
                        'blocks_npu_decisions_sink', 'blocks_vector_to_stream'}
@@ -32,7 +34,9 @@ def main():
                 elif block['name'] == 'algorithm_id':
                     params['value'] = str({'LS': 0, 'LMS': 1, 'STA': 3,
                                            'CNN_FRAME': 6, 'CNN_CHANNEL': 7,
-                                           'CNN_FRAME_MLP': 8, 'CNN_CHANNEL_MLP': 9}[algorithm])
+                                           'CNN_FRAME_MLP': 8, 'CNN_CHANNEL_MLP': 9,
+                                           'CNN_FRAME_INT8': 10, 'CNN_CHANNEL_INT8': 11,
+                                           'CNN_FRAME_MLP_INT8': 12, 'CNN_CHANNEL_MLP_INT8': 13}[algorithm])
                 elif block['name'] == 'ieee802_11_frame_equalizer_reference' and args.debug_block:
                     block['id'] = 'ieee802_11_frame_equalizer_debug'
                 elif block['name'] == 'zz_build_guard_and_impairment':
@@ -73,7 +77,8 @@ import ieee802_11_python
 sys.modules['ieee802_11'] = ieee802_11_python
 for factory in (ieee802_11_python.frame_equalizer, ieee802_11_python.frame_equalizer_debug):
     block = factory(ieee802_11_python.CNN_FRAME, 2.417e9, 20e6, False, False)
-    for name in ('CNN_CHANNEL', 'CNN_FRAME_MLP', 'CNN_CHANNEL_MLP', 'CNN_FRAME'):
+    for name in ('CNN_CHANNEL', 'CNN_FRAME_MLP', 'CNN_CHANNEL_MLP', 'CNN_FRAME',
+                 'CNN_FRAME_INT8', 'CNN_CHANNEL_INT8', 'CNN_FRAME_MLP_INT8', 'CNN_CHANNEL_MLP_INT8'):
         block.set_algorithm(getattr(ieee802_11_python, name))
     del block
 runpy.run_path(sys.argv[2], run_name='__main__')

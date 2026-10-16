@@ -21,8 +21,8 @@ parameters:
   label: Algorithm
   dtype: raw
   default: ieee802_11.LS
-  options: [ieee802_11.LS, ieee802_11.LMS, ieee802_11.COMB, ieee802_11.STA, ieee802_11.CNN_FRAME, ieee802_11.CNN_CHANNEL, ieee802_11.CNN_FRAME_MLP, ieee802_11.CNN_CHANNEL_MLP]
-  option_labels: [LS, LMS, COMB, STA, CNN (frame split), CNN (channel split), CNN (frame split) + MLP, CNN (channel split) + MLP]
+  options: [ieee802_11.LS, ieee802_11.LMS, ieee802_11.COMB, ieee802_11.STA, ieee802_11.CNN_FRAME, ieee802_11.CNN_CHANNEL, ieee802_11.CNN_FRAME_MLP, ieee802_11.CNN_CHANNEL_MLP, ieee802_11.CNN_FRAME_INT8, ieee802_11.CNN_CHANNEL_INT8, ieee802_11.CNN_FRAME_MLP_INT8, ieee802_11.CNN_CHANNEL_MLP_INT8]
+  option_labels: [LS, LMS, COMB, STA, CNN (frame split), CNN (channel split), CNN (frame split) + MLP, CNN (channel split) + MLP, CNN int8 (frame split), CNN int8 (channel split), CNN int8 (frame split) + MLP, CNN int8 (channel split) + MLP]
 - id: freq
   label: Frequency
   dtype: real
