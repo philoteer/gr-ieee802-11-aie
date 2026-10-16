@@ -44,7 +44,7 @@ blocks:
     bus_structure: null
     coordinate: [728, 12.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: file_path
   id: variable
   parameters:
@@ -56,7 +56,7 @@ blocks:
     bus_structure: null
     coordinate: [568, 12.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: freq
   id: variable
   parameters:
@@ -66,7 +66,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [192, 16.0]
+    coordinate: [160, 20.0]
     rotation: 0
     state: enabled
 - name: samp_rate
@@ -78,7 +78,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [296, 16.0]
+    coordinate: [272, 20.0]
     rotation: 0
     state: enabled
 - name: sync_length
@@ -309,8 +309,8 @@ blocks:
     minoutbuf: '0'
     nominal_frequency: freq
     num_slots: '2'
-    path_insts_bin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/Experiments/xclbin_default/CNN_BY_CHANNEL/insts.bin
-    path_xclbin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/Experiments/xclbin_default/CNN_BY_CHANNEL/final.xclbin
+    path_insts_bin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/Experiments/xclbin_default/MLP_BY_CHANNEL/insts.bin
+    path_xclbin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/Experiments/xclbin_default/MLP_BY_CHANNEL/final.xclbin
     weights_path: ''''''
   states:
     bus_sink: false
@@ -361,7 +361,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [0, 284.0]
+    coordinate: [0, 292.0]
     rotation: 0
     state: enabled
 
