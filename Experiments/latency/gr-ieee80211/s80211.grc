@@ -58,30 +58,6 @@ blocks:
     coordinate: [616, 20.0]
     rotation: 0
     state: enabled
-- name: file_path
-  id: variable
-  parameters:
-    comment: ''
-    value: data_dir + "/raw_capture/206.sigmf"
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [800, 12.0]
-    rotation: 0
-    state: disabled
-- name: file_path
-  id: variable
-  parameters:
-    comment: ''
-    value: data_dir + "/raw_capture/room_20260927.sigmf"
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [800, 76.0]
-    rotation: 0
-    state: disabled
 - name: freq_100
   id: variable
   parameters:
@@ -152,63 +128,6 @@ blocks:
     coordinate: [952, 4.0]
     rotation: 0
     state: enabled
-- name: blocks_file_source_0_0_0
-  id: blocks_file_source
-  parameters:
-    affinity: ''
-    alias: ''
-    begin_tag: pmt.PMT_NIL
-    comment: ''
-    file: data_dir + "/raw_capture/wifi_iq_hackrf.bin"
-    length: '0'
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    offset: '0'
-    repeat: 'False'
-    type: byte
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [944, 504.0]
-    rotation: 0
-    state: disabled
-- name: blocks_interleaved_char_to_complex_0
-  id: blocks_interleaved_char_to_complex
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    scale_factor: '255.0'
-    vector_input: 'False'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1200, 528.0]
-    rotation: 0
-    state: disabled
-- name: blocks_interleaved_short_to_complex_0
-  id: blocks_interleaved_short_to_complex
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    scale_factor: '32768'
-    swap: 'False'
-    vector_input: 'False'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1112, 28.0]
-    rotation: 0
-    state: disabled
 - name: blocks_message_debug_0
   id: blocks_message_debug
   parameters:
@@ -265,468 +184,145 @@ blocks:
     coordinate: [1112, 28.0]
     rotation: 0
     state: enabled
-- name: ieee80211_latency_tag_monitor_0
-  id: ieee80211_latency_tag_monitor
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: Native side tap forwarding original ingress timestamps.
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1456, 252.0]
-    rotation: 0
-    state: enabled
-- name: latency_finish
-  id: snippet
-  parameters:
-    alias: ''
-    code: self.epy_block_latency.finish()
-    comment: Summarize after all processing has finished.
-    priority: '0'
-    section: main_after_stop
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [16, 744.0]
-    rotation: 0
-    state: enabled
 - name: epy_block_latency
   id: epy_block
   parameters:
-    _source_code: |
-      import json
-      import threading
-      import time
-      import zlib
-
-      import pmt
-      from gnuradio import gr
-
-
-      class blk(gr.basic_block):
-          """Match native ingress and GR-WiFi equalizer timestamps without IQ work.
-
-          Input boundaries retain the injector's timestamp_ns. Completion uses
-          phy_equalized_ns stamped on the final demodulated output symbol.
-          Payload decoding only identifies the frame and carries that time unchanged.
-          Decoding, Python delivery, matching, and printing are outside the interval.
-
-          Attributes:
-              by_payload (dict): Payload bytes mapped to frame label and sequence.
-              frames (dict): Frame labels mapped to native start/end/done timestamps
-                  in nanoseconds, diagnostic observed time, and a reported flag.
-              lock (threading.Lock): Protects frame state and counters.
-              count (int): Number of reported frames.
-              total_ms (float): Sum of reported start-to-equalized latencies.
-              unmatched (int): Packets without a matching payload and sequence.
-              duplicates (int): Additional decoded packets for an already seen ID.
-              malformed (int): Data packets with invalid envelope length or FCS.
-          """
-
-          def __init__(self, metadata_file="../wifi_latency.sigmf-meta"):
-              """Load expected identities and register message inputs.
-
-              Args:
-                  metadata_file (str): SigMF metadata containing wifi-frame-...
-                      annotations with payload_ascii and mac_sequence_number in
-                      each annotation's JSON core:comment.
-
-              Raises:
-                  OSError: If metadata cannot be read.
-                  ValueError: If JSON is invalid, no frames exist, or labels or
-                      payloads are ambiguous.
-                  KeyError: If required identity fields are missing.
-              """
-              gr.basic_block.__init__(self, name="GR-WiFi PHY latency",
-                                      in_sig=None, out_sig=None)
-              with open(metadata_file) as stream:
-                  metadata = json.load(stream)
-              self.by_payload = {}
-              self.frames = {}
-              for annotation in metadata.get("annotations", []):
-                  label = annotation.get("core:label", "")
-                  if not label.startswith("wifi-frame-"):
-                      continue
-                  info = json.loads(annotation["core:comment"])
-                  payload = info["payload_ascii"].encode("ascii")
-                  if payload in self.by_payload or label in self.frames:
-                      raise ValueError("Latency matching requires unique frame IDs and payloads")
-                  self.by_payload[payload] = (label, info["mac_sequence_number"])
-                  self.frames[label] = {}
-              if not self.frames:
-                  raise ValueError("No annotated Wi-Fi latency frames found")
-              self.lock = threading.Lock()
-              self.count = 0
-              self.total_ms = 0.0
-              self.unmatched = 0
-              self.duplicates = 0
-              self.malformed = 0
-              self.message_port_register_in(pmt.intern("boundaries"))
-              self.set_msg_handler(pmt.intern("boundaries"), self.handle_boundary)
-              self.message_port_register_in(pmt.intern("decoded"))
-              self.set_msg_handler(pmt.intern("decoded"), self.handle_decoded)
-
-          def handle_boundary(self, message):
-              """Retain an original native timestamp regardless of delivery time.
-
-              Args:
-                  message (pmt.pmt_t): Pair of frame_start/frame_end and a metadata
-                      dictionary with frame_id and timestamp_ns. Invalid or unknown
-                      events are ignored.
-              """
-              if not pmt.is_pair(message):
-                  return
-              key, value = pmt.car(message), pmt.cdr(message)
-              if not pmt.is_dict(value):
-                  return
-              if pmt.eq(key, pmt.intern("frame_start")):
-                  event = "start"
-              elif pmt.eq(key, pmt.intern("frame_end")):
-                  event = "end"
-              else:
-                  return
-              label = pmt.dict_ref(value, pmt.intern("frame_id"), pmt.PMT_NIL)
-              stamp = pmt.dict_ref(value, pmt.intern("timestamp_ns"), pmt.PMT_NIL)
-              if not pmt.is_symbol(label) or not pmt.is_uint64(stamp):
-                  return
-              label = pmt.symbol_to_string(label)
-              with self.lock:
-                  if label in self.frames:
-                      self.frames[label].setdefault(event, pmt.to_uint64(stamp))
-                      self.report(label)
-
-          def handle_decoded(self, message):
-              """Unwrap a CRC-valid GR-WiFi packet and match its native completion.
-
-              GR-WiFi emits format (1 byte), PSDU length (2 bytes, little-endian),
-              PSDU including FCS, and MCS (1 byte). This experiment uses 24-byte
-              MAC headers. Channel-report PDUs are ignored. The first completion
-              for a matching payload/sequence wins, even if boundaries arrive later.
-
-              Args:
-                  message (pmt.pmt_t): Decoder PDU carrying phy_equalized_ns metadata
-                      and a blob/u8vector containing the GR-WiFi envelope.
-
-              Raises:
-                  RuntimeError: If a valid data packet lacks a native timestamp,
-                      usually because the system decoder was loaded by mistake.
-              """
-              observed = time.monotonic_ns()  # Diagnostic only, never the endpoint.
-              if not pmt.is_pair(message):
-                  return
-              data = pmt.cdr(message)
-              if not (pmt.is_blob(data) or pmt.is_u8vector(data)):
-                  return
-              packet = bytes(pmt.to_python(data))
-              if not packet or packet[0] not in (0, 1, 2):
-                  return  # Not a legacy/HT/VHT decoded data packet.
-              length = int.from_bytes(packet[1:3], "little")
-              if length < 28 or len(packet) != length + 4 or zlib.crc32(packet[3:3 + length]) != 0x2144df1c:
-                  with self.lock:
-                      self.malformed += 1
-                  return
-              metadata = pmt.car(message)
-              completed = pmt.dict_ref(metadata, pmt.intern("phy_equalized_ns"), pmt.PMT_NIL) if pmt.is_dict(metadata) else pmt.PMT_NIL
-              if not pmt.is_uint64(completed):
-                  raise RuntimeError("PDU lacks phy_equalized_ns; source ./local-env.sh")
-              completed = pmt.to_uint64(completed)
-              mac = packet[3:3 + length - 4]  # Remove envelope and four-byte FCS.
-              match = self.by_payload.get(mac[24:])
-              with self.lock:
-                  if match is None or int.from_bytes(mac[22:24], "little") >> 4 != match[1]:
-                      self.unmatched += 1
-                      return
-                  label = match[0]
-                  frame = self.frames[label]
-                  if "done" in frame:
-                      self.duplicates += 1
-                      return
-                  frame["done"] = completed
-                  frame["observed"] = observed
-                  self.report(label)
-
-          def report(self, label):
-              """Print a sample once both boundaries and completion are available.
-
-              The caller must hold self.lock. Either message input may arrive
-              first; stored native timestamps are never replaced by arrival times.
-
-              Args:
-                  label (str): Known annotated frame label.
-              """
-              frame = self.frames[label]
-              if frame.get("reported") or not all(k in frame for k in ("start", "end", "done")):
-                  return
-              elapsed_ms = (frame["done"] - frame["start"]) / 1e6
-              tail_ms = (frame["done"] - frame["end"]) / 1e6
-              frame["reported"] = True
-              self.count += 1
-              self.total_ms += elapsed_ms
-              print(f"[PHY latency estimate] {label}: "
-                    f"start-to-equalized={elapsed_ms:.4f} ms, "
-                    f"end-to-equalized={tail_ms:.4f} ms, "
-                    f"mean={self.total_ms / self.count:.4f} ms (n={self.count})",
-                    flush=True)
-
-          def finish(self):
-              """Print matching counters and missing IDs after top_block.wait()."""
-              with self.lock:
-                  missing = [label for label, frame in self.frames.items() if not frame.get("reported")]
-                  print(f"[PHY latency summary] matched={self.count}/{len(self.frames)}, "
-                        f"unmatched-output={self.unmatched}, duplicate-output={self.duplicates}, "
-                        f"malformed-output={self.malformed}", flush=True)
-                  if missing:
-                      print("[PHY latency summary] missing: " + ", ".join(missing), flush=True)
+    _source_code: "import json\nimport threading\nimport time\nimport zlib\n\nimport\
+      \ pmt\nfrom gnuradio import gr\n\n\nclass blk(gr.basic_block):\n    \"\"\"Match\
+      \ native ingress and GR-WiFi equalizer timestamps without IQ work.\n\n    Input\
+      \ boundaries retain the injector's timestamp_ns. Completion uses\n    phy_equalized_ns\
+      \ stamped on the final demodulated output symbol.\n    Payload decoding only\
+      \ identifies the frame and carries that time unchanged.\n    Decoding, Python\
+      \ delivery, matching, and printing are outside the interval.\n\n    Attributes:\n\
+      \        by_payload (dict): Payload bytes mapped to frame label and sequence.\n\
+      \        frames (dict): Frame labels mapped to native start/end/done timestamps\n\
+      \            in nanoseconds, diagnostic observed time, and a reported flag.\n\
+      \        lock (threading.Lock): Protects frame state and counters.\n       \
+      \ count (int): Number of reported frames.\n        total_ms (float): Sum of\
+      \ reported start-to-equalized latencies.\n        unmatched (int): Packets without\
+      \ a matching payload and sequence.\n        duplicates (int): Additional decoded\
+      \ packets for an already seen ID.\n        malformed (int): Data packets with\
+      \ invalid envelope length or FCS.\n    \"\"\"\n\n    def __init__(self, metadata_file=\"\
+      ../wifi_latency.sigmf-meta\"):\n        \"\"\"Load expected identities and register\
+      \ message inputs.\n\n        Args:\n            metadata_file (str): SigMF metadata\
+      \ containing wifi-frame-...\n                annotations with payload_ascii\
+      \ and mac_sequence_number in\n                each annotation's JSON core:comment.\n\
+      \n        Raises:\n            OSError: If metadata cannot be read.\n      \
+      \      ValueError: If JSON is invalid, no frames exist, or labels or\n     \
+      \           payloads are ambiguous.\n            KeyError: If required identity\
+      \ fields are missing.\n        \"\"\"\n        gr.basic_block.__init__(self,\
+      \ name=\"GR-WiFi PHY latency\",\n                                in_sig=None,\
+      \ out_sig=None)\n        with open(metadata_file) as stream:\n            metadata\
+      \ = json.load(stream)\n        self.by_payload = {}\n        self.frames = {}\n\
+      \        for annotation in metadata.get(\"annotations\", []):\n            label\
+      \ = annotation.get(\"core:label\", \"\")\n            if not label.startswith(\"\
+      wifi-frame-\"):\n                continue\n            info = json.loads(annotation[\"\
+      core:comment\"])\n            payload = info[\"payload_ascii\"].encode(\"ascii\"\
+      )\n            if payload in self.by_payload or label in self.frames:\n    \
+      \            raise ValueError(\"Latency matching requires unique frame IDs and\
+      \ payloads\")\n            self.by_payload[payload] = (label, info[\"mac_sequence_number\"\
+      ])\n            self.frames[label] = {}\n        if not self.frames:\n     \
+      \       raise ValueError(\"No annotated Wi-Fi latency frames found\")\n    \
+      \    self.lock = threading.Lock()\n        self.count = 0\n        self.total_ms\
+      \ = 0.0\n        self.unmatched = 0\n        self.duplicates = 0\n        self.malformed\
+      \ = 0\n        self.message_port_register_in(pmt.intern(\"boundaries\"))\n \
+      \       self.set_msg_handler(pmt.intern(\"boundaries\"), self.handle_boundary)\n\
+      \        self.message_port_register_in(pmt.intern(\"decoded\"))\n        self.set_msg_handler(pmt.intern(\"\
+      decoded\"), self.handle_decoded)\n\n    def handle_boundary(self, message):\n\
+      \        \"\"\"Retain an original native timestamp regardless of delivery time.\n\
+      \n        Args:\n            message (pmt.pmt_t): Pair of frame_start/frame_end\
+      \ and a metadata\n                dictionary with frame_id and timestamp_ns.\
+      \ Invalid or unknown\n                events are ignored.\n        \"\"\"\n\
+      \        if not pmt.is_pair(message):\n            return\n        key, value\
+      \ = pmt.car(message), pmt.cdr(message)\n        if not pmt.is_dict(value):\n\
+      \            return\n        if pmt.eq(key, pmt.intern(\"frame_start\")):\n\
+      \            event = \"start\"\n        elif pmt.eq(key, pmt.intern(\"frame_end\"\
+      )):\n            event = \"end\"\n        else:\n            return\n      \
+      \  label = pmt.dict_ref(value, pmt.intern(\"frame_id\"), pmt.PMT_NIL)\n    \
+      \    stamp = pmt.dict_ref(value, pmt.intern(\"timestamp_ns\"), pmt.PMT_NIL)\n\
+      \        if not pmt.is_symbol(label) or not pmt.is_uint64(stamp):\n        \
+      \    return\n        label = pmt.symbol_to_string(label)\n        with self.lock:\n\
+      \            if label in self.frames:\n                self.frames[label].setdefault(event,\
+      \ pmt.to_uint64(stamp))\n                self.report(label)\n\n    def handle_decoded(self,\
+      \ message):\n        \"\"\"Unwrap a CRC-valid GR-WiFi packet and match its native\
+      \ completion.\n\n        GR-WiFi emits format (1 byte), PSDU length (2 bytes,\
+      \ little-endian),\n        PSDU including FCS, and MCS (1 byte). This experiment\
+      \ uses 24-byte\n        MAC headers. Channel-report PDUs are ignored. The first\
+      \ completion\n        for a matching payload/sequence wins, even if boundaries\
+      \ arrive later.\n\n        Args:\n            message (pmt.pmt_t): Decoder PDU\
+      \ carrying phy_equalized_ns metadata\n                and a blob/u8vector containing\
+      \ the GR-WiFi envelope.\n\n        Raises:\n            RuntimeError: If a valid\
+      \ data packet lacks a native timestamp,\n                usually because the\
+      \ system decoder was loaded by mistake.\n        \"\"\"\n        observed =\
+      \ time.monotonic_ns()  # Diagnostic only, never the endpoint.\n        if not\
+      \ pmt.is_pair(message):\n            return\n        data = pmt.cdr(message)\n\
+      \        if not (pmt.is_blob(data) or pmt.is_u8vector(data)):\n            return\n\
+      \        packet = bytes(pmt.to_python(data))\n        if not packet or packet[0]\
+      \ not in (0, 1, 2):\n            return  # Not a legacy/HT/VHT decoded data\
+      \ packet.\n        length = int.from_bytes(packet[1:3], \"little\")\n      \
+      \  if length < 28 or len(packet) != length + 4 or zlib.crc32(packet[3:3 + length])\
+      \ != 0x2144df1c:\n            with self.lock:\n                self.malformed\
+      \ += 1\n            return\n        metadata = pmt.car(message)\n        completed\
+      \ = pmt.dict_ref(metadata, pmt.intern(\"phy_equalized_ns\"), pmt.PMT_NIL) if\
+      \ pmt.is_dict(metadata) else pmt.PMT_NIL\n        if not pmt.is_uint64(completed):\n\
+      \            raise RuntimeError(\"PDU lacks phy_equalized_ns; source ./local-env.sh\"\
+      )\n        completed = pmt.to_uint64(completed)\n        mac = packet[3:3 +\
+      \ length - 4]  # Remove envelope and four-byte FCS.\n        match = self.by_payload.get(mac[24:])\n\
+      \        with self.lock:\n            if match is None or int.from_bytes(mac[22:24],\
+      \ \"little\") >> 4 != match[1]:\n                self.unmatched += 1\n     \
+      \           return\n            label = match[0]\n            frame = self.frames[label]\n\
+      \            if \"done\" in frame:\n                self.duplicates += 1\n \
+      \               return\n            frame[\"done\"] = completed\n          \
+      \  frame[\"observed\"] = observed\n            self.report(label)\n\n    def\
+      \ report(self, label):\n        \"\"\"Print a sample once both boundaries and\
+      \ completion are available.\n\n        The caller must hold self.lock. Either\
+      \ message input may arrive\n        first; stored native timestamps are never\
+      \ replaced by arrival times.\n\n        Args:\n            label (str): Known\
+      \ annotated frame label.\n        \"\"\"\n        frame = self.frames[label]\n\
+      \        if frame.get(\"reported\") or not all(k in frame for k in (\"start\"\
+      , \"end\", \"done\")):\n            return\n        elapsed_ms = (frame[\"done\"\
+      ] - frame[\"start\"]) / 1e6\n        tail_ms = (frame[\"done\"] - frame[\"end\"\
+      ]) / 1e6\n        frame[\"reported\"] = True\n        self.count += 1\n    \
+      \    self.total_ms += elapsed_ms\n        print(f\"[PHY latency estimate] {label}:\
+      \ \"\n              f\"start-to-equalized={elapsed_ms:.4f} ms, \"\n        \
+      \      f\"end-to-equalized={tail_ms:.4f} ms, \"\n              f\"mean={self.total_ms\
+      \ / self.count:.4f} ms (n={self.count})\",\n              flush=True)\n\n  \
+      \  def finish(self):\n        \"\"\"Print matching counters and missing IDs\
+      \ after top_block.wait().\"\"\"\n        with self.lock:\n            missing\
+      \ = [label for label, frame in self.frames.items() if not frame.get(\"reported\"\
+      )]\n            print(f\"[PHY latency summary] matched={self.count}/{len(self.frames)},\
+      \ \"\n                  f\"unmatched-output={self.unmatched}, duplicate-output={self.duplicates},\
+      \ \"\n                  f\"malformed-output={self.malformed}\", flush=True)\n\
+      \            if missing:\n                print(\"[PHY latency summary] missing:\
+      \ \" + \", \".join(missing), flush=True)\n"
     affinity: ''
     alias: ''
     comment: Message-only reporter using native input and completion timestamps.
-    metadata_file: file_path+"-meta"
     maxoutbuf: '0'
+    metadata_file: file_path+"-meta"
     minoutbuf: '0'
   states:
+    _io_cache: '(''GR-WiFi PHY latency'', ''blk'', [(''metadata_file'', "''../wifi_latency.sigmf-meta''")],
+      [(''decoded'', ''message'', 1), (''boundaries'', ''message'', 1)], [], "Match
+      native ingress and GR-WiFi equalizer timestamps without IQ work.\n\n    Input
+      boundaries retain the injector''s timestamp_ns. Completion uses\n    phy_equalized_ns
+      stamped on the final demodulated output symbol.\n    Payload decoding only identifies
+      the frame and carries that time unchanged.\n    Decoding, Python delivery, matching,
+      and printing are outside the interval.\n\n    Attributes:\n        by_payload
+      (dict): Payload bytes mapped to frame label and sequence.\n        frames (dict):
+      Frame labels mapped to native start/end/done timestamps\n            in nanoseconds,
+      diagnostic observed time, and a reported flag.\n        lock (threading.Lock):
+      Protects frame state and counters.\n        count (int): Number of reported
+      frames.\n        total_ms (float): Sum of reported start-to-equalized latencies.\n        unmatched
+      (int): Packets without a matching payload and sequence.\n        duplicates
+      (int): Additional decoded packets for an already seen ID.\n        malformed
+      (int): Data packets with invalid envelope length or FCS.\n    ", [])'
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1456, 352.0]
+    coordinate: [1376, 352.0]
     rotation: 0
     state: enabled
-- name: energy_logger_finish
-  id: snippet
-  parameters:
-    alias: ''
-    code: self.epy_block_energy_logger.finish_logging()
-    comment: Finish after all processing, on EOF or SIGINT/SIGTERM.
-    priority: '0'
-    section: main_after_stop
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [16, 132.0]
-    rotation: 0
-    state: disabled
-- name: energy_logger_prepare
-  id: snippet
-  parameters:
-    alias: ''
-    code: self.epy_block_energy_logger.begin_logging()
-    comment: ''
-    priority: '0'
-    section: main_after_init
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [16, 600]
-    rotation: 0
-    state: disabled
-- name: energy_logger_start
-  id: snippet
-  parameters:
-    alias: ''
-    code: 'self.epy_block_energy_logger.start_monitoring(lambda: self.mlir_aie_sigmf_tag_injector_0.nitems_written(0))'
-    comment: ''
-    priority: '0'
-    section: main_after_start
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [16, 680]
-    rotation: 0
-    state: disabled
-- name: epy_block_energy_logger
-  id: epy_block
-  parameters:
-    _source_code: "import atexit\nimport csv\nfrom pathlib import Path\nimport threading\n\
-      import time\n\nfrom gnuradio import gr\n\n\nclass blk(gr.basic_block):\n   \
-      \ \"\"\"Log energy using low-rate polling, without any streaming ports.\n\n\
-      \    Lifecycle snippets prepare the baseline before streaming, start the sampler\n\
-      \    after native counters are initialized, and finalize after top_block.wait().\n\
-      \    No Python work callback or extra IQ buffer reader is scheduled.\n\n   \
-      \ Attributes:\n        csv_path (Path): CSV destination, overwritten at each\
-      \ start.\n        interval (float): Requested delay between sensor readings\
-      \ in seconds.\n        rapl (Path): RAPL package domain directory.\n       \
-      \ supplies (Path): ACPI power supply directory.\n        samples (int): Number\
-      \ of complex IQ samples last polled from the native counter.\n    \"\"\"\n\n\
-      \    def __init__(self, csv_path=\"original_energy.csv\", interval=0.5,\n  \
-      \               rapl_path=\"/sys/class/powercap/intel-rapl:0\",\n          \
-      \       power_supply_path=\"/sys/class/power_supply\"):\n        \"\"\"Initialize\
-      \ the monitor without opening sensors or starting a thread.\n\n        Args:\n\
-      \            csv_path (str): Destination path for the measurement CSV.\n   \
-      \         interval (float): Sampling delay in seconds, at least 0.05.\n    \
-      \        rapl_path (str): Directory containing energy_uj, name, and\n      \
-      \          max_energy_range_uj for the measured RAPL domain.\n            power_supply_path\
-      \ (str): Directory containing the battery and\n                external power\
-      \ supply sysfs entries.\n\n        Raises:\n            ValueError: If interval\
-      \ is less than 0.05 seconds.\n        \"\"\"\n        gr.basic_block.__init__(self,\
-      \ name=\"Run Energy Logger\",\n                               in_sig=None, out_sig=None)\n\
-      \        if interval < 0.05:\n            raise ValueError(\"Energy sampling\
-      \ interval must be at least 0.05 s\")\n        self.csv_path = Path(csv_path)\n\
-      \        self.interval = interval\n        self.rapl = Path(rapl_path)\n   \
-      \     self.supplies = Path(power_supply_path)\n        self.samples = 0\n  \
-      \      self._counter = lambda: 0\n        self._sensor_files = {}\n        self._last_flush_ns\
-      \ = 0\n        self._done = threading.Event()\n        self._thread = None\n\
-      \        self._file = None\n        self._error = None\n        self._previous\
-      \ = None\n        self._energy_j = 0.0\n\n    def _read(self, path):\n     \
-      \   \"\"\"Read a sysfs attribute and remove surrounding whitespace.\n\n    \
-      \    Args:\n            path (Path): Attribute file to read.\n\n        Returns:\n\
-      \            str: Stripped attribute value.\n\n        Raises:\n           \
-      \ OSError: If the attribute cannot be read.\n        \"\"\"\n        stream\
-      \ = self._sensor_files.get(path)\n        if stream is None:\n            stream\
-      \ = path.open(\"r\")\n            self._sensor_files[path] = stream\n      \
-      \  stream.seek(0)\n        return stream.read().strip()\n\n    def _close_sensors(self):\n\
-      \        \"\"\"Close cached sysfs files after the sampler thread has stopped.\"\
-      \"\"\n        for stream in self._sensor_files.values():\n            stream.close()\n\
-      \        self._sensor_files.clear()\n\n    def _battery_reading(self):\n   \
-      \     \"\"\"Read battery measurements only while unplugged and discharging.\n\
-      \n        Returns:\n            tuple: External power online flag (bool), battery\
-      \ status (str),\n            discharge power in watts (float), and stored energy\
-      \ in joules\n            (float). The last two values are empty strings when\
-      \ plugged in\n            or when the battery is not discharging.\n\n      \
-      \  Raises:\n            OSError: If a required power supply attribute cannot\
-      \ be read.\n            ValueError: If a numeric attribute cannot be parsed.\n\
-      \        \"\"\"\n        # ACPI sysfs is also the source of sensors' BAT0-acpi\
-      \ power1.\n        online = any(int(self._read(path / \"online\")) != 0\n  \
-      \                   for path in self._external)\n        status = self._read(self._battery\
-      \ / \"status\")\n        unplugged = not online and status == \"Discharging\"\
-      \n        if not unplugged:\n            return online, status, \"\", \"\"\n\
-      \        # power_now is in microwatts; energy_now is in micro-watt-hours.\n\
-      \        watts = int(self._read(self._battery / \"power_now\")) / 1e6\n    \
-      \    joules = int(self._read(self._battery / \"energy_now\")) * 0.0036\n   \
-      \     return online, status, watts, joules\n\n    def _sample(self, phase):\n\
-      \        \"\"\"Take one sensor snapshot, update energy totals, and buffer a\
-      \ CSV row.\n\n        The first reading establishes the monotonic time and counter\
-      \ baseline.\n        Later readings derive interval-average package power and\
-      \ cumulative\n        energy. Calls must be serialized between startup, the\
-      \ monitor thread,\n        and finalization.\n\n        Args:\n            phase\
-      \ (str): Row marker: \"start\", \"sample\", or \"end\".\n\n        Raises:\n\
-      \            OSError: If a sensor read or CSV write fails.\n            ValueError:\
-      \ If a numeric sensor attribute cannot be parsed.\n        \"\"\"\n        counter\
-      \ = int(self._read(self.rapl / \"energy_uj\"))\n        now = time.monotonic_ns()\n\
-      \        self.samples = int(self._counter())\n        wall = time.time_ns()\n\
-      \        online, status, system_w, battery_j = self._battery_reading()\n   \
-      \     power_w = \"\"\n        if self._previous is None:\n            self._start_ns\
-      \ = now\n        else:\n            previous_ns, previous_counter = self._previous\n\
-      \            delta = counter - previous_counter\n            if delta < 0:\n\
-      \                # Correct one counter wrap between consecutive readings.\n\
-      \                delta += self._range_uj\n            self._energy_j += delta\
-      \ / 1e6\n            # Convert microjoules / nanoseconds to joules / second\
-      \ (watts).\n            power_w = delta * 1000.0 / (now - previous_ns)\n   \
-      \     self._previous = now, counter\n        self._writer.writerow({\n     \
-      \       \"phase\": phase,\n            \"unix_time_ns\": wall,\n           \
-      \ \"elapsed_s\": (now - self._start_ns) / 1e9,\n            \"samples_processed\"\
-      : self.samples,\n            \"rapl_domain\": self._domain,\n            \"\
-      rapl_energy_uj\": counter,\n            \"rapl_max_energy_range_uj\": self._range_uj,\n\
-      \            \"soc_energy_j\": self._energy_j,\n            \"soc_power_w\"\
-      : power_w,\n            \"ac_online\": int(online),\n            \"battery_status\"\
-      : status,\n            \"system_power_w\": system_w,\n            \"battery_energy_j\"\
-      : battery_j,\n        })\n        # Flush boundary rows and at most once every\
-      \ five seconds during the run.\n        if phase != \"sample\" or now - self._last_flush_ns\
-      \ >= 5_000_000_000:\n            self._file.flush()\n            self._last_flush_ns\
-      \ = now\n\n    def _prepare_logging(self):\n        \"\"\"Initialize sensors,\
-      \ CSV output, and a not-yet-started sampler thread.\n\n        Called by begin_logging()\
-      \ before the flowgraph starts. Takes the baseline\n        reading synchronously\
-      \ before launching the monitor thread and\n        registers an exit-time cleanup\
-      \ fallback.\n\n        Returns:\n            bool: True when initialization\
-      \ succeeds.\n\n        Raises:\n            RuntimeError: If there is not exactly\
-      \ one battery or no external\n                power supply online indicator\
-      \ is available.\n            OSError: If sensor discovery, attribute reads,\
-      \ or CSV setup fails.\n            ValueError: If a numeric sensor attribute\
-      \ cannot be parsed.\n        \"\"\"\n        self.csv_path = Path(self.csv_path)\n\
-      \        self.rapl = Path(self.rapl)\n        self.supplies = Path(self.supplies)\n\
-      \        self.samples = 0\n        self._counter = lambda: 0\n        self._last_flush_ns\
-      \ = 0\n        self._thread = None\n        self._previous = None\n        self._energy_j\
-      \ = 0.0\n        self._error = None\n        self._done.clear()\n        self._range_uj\
-      \ = int(self._read(self.rapl / \"max_energy_range_uj\"))\n        self._domain\
-      \ = self._read(self.rapl / \"name\")\n        batteries = [p for p in self.supplies.iterdir()\n\
-      \                     if (p / \"type\").exists() and self._read(p / \"type\"\
-      ) == \"Battery\"]\n        if len(batteries) != 1:\n            raise RuntimeError(\"\
-      Energy logger requires exactly one battery\")\n        self._battery = batteries[0]\n\
-      \        self._external = [p for p in self.supplies.iterdir()\n            \
-      \              if p != self._battery and (p / \"online\").exists()]\n      \
-      \  if not self._external:\n            raise RuntimeError(\"No external power\
-      \ supply online indicator found\")\n        self.csv_path.parent.mkdir(parents=True,\
-      \ exist_ok=True)\n        self._file = self.csv_path.open(\"w\", newline=\"\"\
-      )\n        self._writer = csv.DictWriter(self._file, fieldnames=[\n        \
-      \    \"phase\", \"unix_time_ns\", \"elapsed_s\", \"samples_processed\",\n  \
-      \          \"rapl_domain\", \"rapl_energy_uj\", \"rapl_max_energy_range_uj\"\
-      ,\n            \"soc_energy_j\", \"soc_power_w\", \"ac_online\", \"battery_status\"\
-      ,\n            \"system_power_w\", \"battery_energy_j\"])\n        self._writer.writeheader()\n\
-      \        try:\n            self._sample(\"start\")\n        except Exception:\n\
-      \            self._file.close()\n            self._file = None\n           \
-      \ raise\n        self._thread = threading.Thread(target=self._monitor, daemon=True)\n\
-      \        atexit.register(self.finish_logging)\n        return True\n\n    def\
-      \ _monitor(self):\n        \"\"\"Sample periodically until finalization requests\
-      \ a stop.\n\n        Waiting on the event lets finalization wake the thread\
-      \ immediately.\n        Sensor or write errors are saved and re-raised by finish_logging(),\n\
-      \        leaving the CSV without an end marker.\n        \"\"\"\n        while\
-      \ not self._done.wait(self.interval):\n            try:\n                self._sample(\"\
-      sample\")\n            except Exception as error:\n                self._error\
-      \ = error\n                return\n\n    def finish_logging(self):\n       \
-      \ \"\"\"Stop monitoring, take the final reading, and close the CSV.\n\n    \
-      \    Call after top_block.wait() returns. This method is idempotent after\n\
-      \        the CSV closes. The monitor is joined before the final reading to\n\
-      \        prevent concurrent writes. Cleanup closes the CSV even on failure.\n\
-      \n        Raises:\n            RuntimeError: If background sampling failed.\n\
-      \            OSError: If the final sensor read or CSV write fails.\n       \
-      \     ValueError: If a final numeric sensor attribute cannot be parsed.\n  \
-      \      \"\"\"\n        # The IQ branch can finish before the decoder. Do not\
-      \ finalize in\n        # block.stop(): the flowgraph's after-stop snippet calls\
-      \ this after wait().\n        if self._file is None:\n            self._close_sensors()\n\
-      \            return\n        self._done.set()\n        if self._thread is not\
-      \ None and self._thread.ident is not None:\n            self._thread.join()\n\
-      \        try:\n            if self._error is not None:\n                raise\
-      \ RuntimeError(\"Energy sampling failed\") from self._error\n            self._sample(\"\
-      end\")\n        finally:\n            self._file.close()\n            self._file\
-      \ = None\n            self._close_sensors()\n            atexit.unregister(self.finish_logging)\n\
-      \n    def begin_logging(self):\n        \"\"\"Take the baseline before top_block.start(),\
-      \ without starting a thread.\n\n        Raises:\n            RuntimeError: If\
-      \ logging is active or sensor discovery fails.\n            OSError: If sensors\
-      \ or the CSV cannot be accessed.\n            ValueError: If a numeric sensor\
-      \ reading is invalid.\n        \"\"\"\n        if self._file is not None:\n\
-      \            raise RuntimeError(\"Energy logging is already active\")\n    \
-      \    try:\n            self._prepare_logging()\n        except Exception:\n\
-      \            self.finish_logging()\n            raise\n\n    def start_monitoring(self,\
-      \ sample_counter):\n        \"\"\"Start sampling after the native source has\
-      \ initialized its counters.\n\n        Args:\n            sample_counter (Callable[[],\
-      \ int]): Native IQ sample counter, polled\n                once per sensor snapshot\
-      \ rather than per streaming buffer.\n\n        Raises:\n            RuntimeError:\
-      \ If logging is unprepared or monitoring is already active.\n        \"\"\"\n\
-      \        if self._file is None or self._thread.ident is not None:\n        \
-      \    raise RuntimeError(\"Prepare logging once before starting monitoring\"\
-      )\n        self._counter = sample_counter\n        self._thread.start()\n"
-    affinity: ''
-    alias: ''
-    comment: No stream ports; lifecycle snippets control low-rate native-counter polling.
-    csv_path: data_dir + "/tmp_out/gr_ieee80211_energy.csv"
-    interval: '0.5'
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    power_supply_path: '"/sys/class/power_supply"'
-    rapl_path: '"/sys/class/powercap/intel-rapl:0"'
-  states:
-    _io_cache: '(''Run Energy Logger'', ''blk'', [(''csv_path'', "''original_energy.csv''"),
-      (''interval'', ''0.5''), (''rapl_path'', "''/sys/class/powercap/intel-rapl:0''"),
-      (''power_supply_path'', "''/sys/class/power_supply''")], [], [], ''Log energy
-      using low-rate polling, without any streaming ports.\n\n    Lifecycle snippets
-      prepare the baseline before streaming, start the sampler\n    after native counters
-      are initialized, and finalize after top_block.wait().\n    No Python work callback
-      or extra IQ buffer reader is scheduled.\n\n    Attributes:\n        csv_path
-      (Path): CSV destination, overwritten at each start.\n        interval (float):
-      Requested delay between sensor readings in seconds.\n        rapl (Path): RAPL
-      package domain directory.\n        supplies (Path): ACPI power supply directory.\n        samples
-      (int): Number of complex IQ samples last polled from the native counter.\n    '',
-      [''csv_path'', ''interval''])'
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [264, 420.0]
-    rotation: 0
-    state: disabled
 - name: ieee80211_decode_0
   id: ieee80211_decode
   parameters:
@@ -758,6 +354,21 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [1000, 176.0]
+    rotation: 0
+    state: enabled
+- name: ieee80211_latency_tag_monitor_0
+  id: ieee80211_latency_tag_monitor
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: Native side tap forwarding original ingress timestamps.
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1456, 252.0]
     rotation: 0
     state: enabled
 - name: ieee80211_signal_0
@@ -805,6 +416,21 @@ blocks:
     coordinate: [600, 136.0]
     rotation: 0
     state: enabled
+- name: latency_finish
+  id: snippet
+  parameters:
+    alias: ''
+    code: self.epy_block_latency.finish()
+    comment: Summarize after all processing has finished.
+    priority: '0'
+    section: main_after_stop
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [128, 364.0]
+    rotation: 0
+    state: enabled
 - name: mlir_aie_sigmf_tag_injector_0
   id: mlir_aie_sigmf_tag_injector
   parameters:
@@ -824,26 +450,6 @@ blocks:
     coordinate: [1288, 28.0]
     rotation: 0
     state: enabled
-- name: network_socket_pdu_0_0
-  id: network_socket_pdu
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    host: 127.0.0.1
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    mtu: '65535'
-    port: '9527'
-    tcp_no_delay: 'False'
-    type: UDP_CLIENT
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1456, 128.0]
-    rotation: 0
-    state: disabled
 - name: presiso_0
   id: presiso
   parameters:
@@ -872,19 +478,6 @@ blocks:
     coordinate: [1528, 52.0]
     rotation: 0
     state: enabled
-- name: virtual_sink_0_0
-  id: virtual_sink
-  parameters:
-    alias: ''
-    comment: ''
-    stream_id: iq
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1408, 536.0]
-    rotation: 0
-    state: disabled
 - name: virtual_source_0
   id: virtual_source
   parameters:
@@ -901,19 +494,16 @@ blocks:
 
 connections:
 - [blocks_file_source_0, '0', blocks_throttle_0, '0']
-- [blocks_throttle_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
-- [blocks_file_source_0_0_0, '0', blocks_interleaved_char_to_complex_0, '0']
-- [blocks_interleaved_char_to_complex_0, '0', virtual_sink_0_0, '0']
 - [blocks_probe_rate_0, rate, blocks_message_debug_0, print]
-- [ieee80211_decode_0, out, network_socket_pdu_0_0, pdus]
+- [blocks_throttle_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
 - [ieee80211_decode_0, out, epy_block_latency, decoded]
-- [ieee80211_latency_tag_monitor_0, events, epy_block_latency, boundaries]
 - [ieee80211_demod_0, '0', ieee80211_decode_0, '0']
+- [ieee80211_latency_tag_monitor_0, events, epy_block_latency, boundaries]
 - [ieee80211_signal_0, '0', ieee80211_demod_0, '0']
 - [ieee80211_sync_0, '0', ieee80211_signal_0, '0']
 - [ieee80211_trigger_0, '0', ieee80211_sync_0, '0']
-- [mlir_aie_sigmf_tag_injector_0, '0', virtual_sink_0, '0']
 - [mlir_aie_sigmf_tag_injector_0, '0', ieee80211_latency_tag_monitor_0, '0']
+- [mlir_aie_sigmf_tag_injector_0, '0', virtual_sink_0, '0']
 - [presiso_0, '0', ieee80211_trigger_0, '0']
 - [presiso_0, '1', ieee80211_sync_0, '1']
 - [virtual_source_0, '0', blocks_probe_rate_0, '0']

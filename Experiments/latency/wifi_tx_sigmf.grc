@@ -6,7 +6,8 @@ options:
     cmake_opt: ''
     comment: ''
     copyright: ''
-    description: Native-block 20 MHz Wi-Fi fixture with sample-exact SigMF annotations
+    description: Native-block 20 MHz Wi-Fi fixture; 2000 frames (~10 s) by default,
+      with sample-exact SigMF annotations.
     gen_cmake: 'On'
     gen_linking: dynamic
     generate_options: no_gui
@@ -58,10 +59,15 @@ blocks:
     rotation: 0
     state: enabled
 - name: frame_count
-  id: variable
+  id: parameter
   parameters:
-    comment: ''
-    value: '20'
+    alias: ''
+    comment: '2000 frames at 5 ms spacing: approximately 10 seconds of replay.'
+    hide: none
+    label: Frame count
+    short_id: ''
+    type: intx
+    value: '2000'
   states:
     bus_sink: false
     bus_source: false
@@ -84,7 +90,7 @@ blocks:
 - name: frame_spacing
   id: variable
   parameters:
-    comment: ''
+    comment: 100000 samples at 20 MSamples/s = 5 ms between frames (200 frames/s).
     value: '100000'
   states:
     bus_sink: false
@@ -235,8 +241,8 @@ blocks:
   id: snippet
   parameters:
     alias: ''
-    code: "import time\ndeadline = time.monotonic() + 60\ntry:\n    while (min(self.iq_file.nitems_read(0),\
-      \ self.output_tags.nitems_read(0)) < self.total_samples\n           or self.phy_tags.num_tags()\
+    code: "import time\ndeadline = time.monotonic() + max(60.0, 10.0 * self.total_samples / self.samp_rate)\ntry:\n    while (min(self.iq_file.nitems_read(0),\
+      \ self.output_tags.nitems_read(0)) < self.total_samples\n           or len(self.phy_tags.current_tags())\
       \ < self.frame_count):\n        if time.monotonic() > deadline:\n          \
       \  raise RuntimeError(\"Timed out waiting for native capture blocks\")\n   \
       \     time.sleep(0.01)\nfinally:\n    self.stop()\n    self.wait()"
