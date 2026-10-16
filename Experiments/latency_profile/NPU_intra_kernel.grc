@@ -117,7 +117,7 @@ blocks:
     priority: '0'
     code: |-
       import profiler_support
-      self.profile_session = profiler_support.ProfileSession(self, 'intra', self.output_dir)
+      self.profile_session = profiler_support.ProfileSession(self, self.output_dir)
   states: {coordinate: [8, 560], state: enabled}
 - name: create_output_directory
   id: snippet

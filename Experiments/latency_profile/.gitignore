@@ -1,5 +1,4 @@
 /results/
-/npu_inter_kernel.py
 /npu_intra_kernel.py
 /__pycache__/
 /gr-mlir_aie-profile/gr-mlir_aie/local/

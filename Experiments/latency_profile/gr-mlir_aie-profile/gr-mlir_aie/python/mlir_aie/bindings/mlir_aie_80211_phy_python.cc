@@ -24,8 +24,6 @@
 namespace py = pybind11;
 
 #include <gnuradio/mlir_aie/mlir_aie_80211_phy.h>
-#include <gnuradio/high_res_timer.h>
-#include <stdexcept>
 // pydoc.h is automatically generated in the build directory
 #include <mlir_aie_80211_phy_pydoc.h>
 
@@ -54,16 +52,6 @@ void bind_mlir_aie_80211_phy(py::module& m)
         .def("nominal_frequency", &mlir_aie_80211_phy::nominal_frequency)
         .def("start_profiling", &mlir_aie_80211_phy::start_profiling, py::arg("csv_path"))
         .def("stop_profiling", &mlir_aie_80211_phy::stop_profiling)
-        // The 3.10 runtime can leave this on CLOCK_THREAD_CPUTIME_ID even
-        // when the PerfCounters clock preference is set to monotonic.
-        // Call only before starting any scheduler threads in this process.
-        .def_static("use_monotonic_performance_clock", []() {
-#ifdef GNURADIO_HRT_USE_CLOCK_GETTIME
-            gr::high_res_timer_source = CLOCK_MONOTONIC;
-#else
-            throw std::runtime_error("This profiler requires the clock_gettime runtime");
-#endif
-        })
         
 
 

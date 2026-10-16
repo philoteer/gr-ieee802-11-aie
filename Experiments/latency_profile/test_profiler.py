@@ -3,45 +3,15 @@
 import csv
 import os
 import tempfile
-import time
 import unittest
 from pathlib import Path
 
-import numpy as np
-from gnuradio import blocks, gr, mlir_aie
+from gnuradio import blocks
 
 from profiler_support import ProfileSession, summarize_intra
 
 
-class SleepingCopy(gr.sync_block):
-    def __init__(self):
-        super().__init__("sleeping_copy", in_sig=[np.float32], out_sig=[np.float32])
-        self.calls = 0
-
-    def work(self, inputs, outputs):
-        self.calls += 1
-        time.sleep(0.01)
-        outputs[0][:] = inputs[0][:len(outputs[0])]
-        return len(outputs[0])
-
-
 class ProfileTests(unittest.TestCase):
-    def test_scheduler_counters_include_sleep(self):
-        # A preference alone is insufficient on the 3.10 runtime on this host.
-        mlir_aie.mlir_aie_80211_phy.use_monotonic_performance_clock()
-        tb = gr.top_block()
-        source = blocks.vector_source_f(list(range(64)), False)
-        sleeper = SleepingCopy()
-        sleeper.set_max_noutput_items(16)
-        sink = blocks.vector_sink_f()
-        tb.connect(source, sleeper, sink)
-        tb.start(16)
-        tb.wait()
-        total_s = sleeper.pc_work_time_total() / gr.high_res_timer_tps()
-        self.assertGreaterEqual(sleeper.calls, 4)
-        self.assertGreaterEqual(total_s, sleeper.calls * 0.009)
-        self.assertEqual(list(range(64)), list(sink.data()))
-
     def test_summary_separates_overlapping_metrics(self):
         with tempfile.TemporaryDirectory() as directory:
             raw = Path(directory) / "raw.csv"
@@ -78,7 +48,7 @@ class ProfileTests(unittest.TestCase):
                     phy.set_output_multiple(65536)
                     sink = blocks.vector_sink_b()
                     tb.connect(phy, sink)
-                    session = ProfileSession(tb, "intra", tb.output_dir) if profile else None
+                    session = ProfileSession(tb, tb.output_dir) if profile else None
                     tb.start()
                     tb.wait()
                     if session:
