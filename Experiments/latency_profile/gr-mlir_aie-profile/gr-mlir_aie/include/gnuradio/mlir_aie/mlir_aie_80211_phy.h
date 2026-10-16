@@ -10,6 +10,7 @@
 
 #include <gnuradio/block.h>
 #include <gnuradio/mlir_aie/api.h>
+#include <string>
 
 namespace gr {
 namespace mlir_aie {
@@ -43,6 +44,11 @@ public:
 
     virtual void set_nominal_frequency(double nominal_frequency) = 0;
     virtual double nominal_frequency() const = 0;
+
+    // Configure before start(), close after wait(). Empty path disables profiling.
+    // Host steady-clock durations, not individual AIE kernel execution times.
+    virtual void start_profiling(const std::string& csv_path) = 0;
+    virtual void stop_profiling() = 0;
 };
 
 } // namespace mlir_aie

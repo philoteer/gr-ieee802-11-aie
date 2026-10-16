@@ -12,16 +12,43 @@
 #include <pmt/pmt.h>
 
 #include <algorithm>
+#include <cerrno>
+#include <chrono>
 #include <cmath>
 #include <complex>
 #include <cstring>
+#include <ctime>
 #include <iostream>
 #include <iterator>
 #include <limits>
 #include <stdexcept>
+#include <system_error>
 
 namespace gr {
 namespace mlir_aie {
+
+namespace {
+
+// Use the same explicit POSIX clock as Experiments/latency/. Chrono types
+// retain nanosecond arithmetic without relying on steady_clock's clock choice.
+struct profile_clock {
+    using duration = std::chrono::nanoseconds;
+    using rep = duration::rep;
+    using period = duration::period;
+    using time_point = std::chrono::time_point<profile_clock>;
+    static constexpr bool is_steady = true;
+
+    static time_point now()
+    {
+        timespec timestamp;
+        if (clock_gettime(CLOCK_MONOTONIC, &timestamp) != 0)
+            throw std::system_error(errno, std::generic_category(), "clock_gettime");
+        return time_point(std::chrono::seconds(timestamp.tv_sec) +
+                          std::chrono::nanoseconds(timestamp.tv_nsec));
+    }
+};
+
+} // namespace
 
 mlir_aie_80211_phy::sptr mlir_aie_80211_phy::make(const char* path_xclbin,
                                                    const char* path_insts_bin,
@@ -188,6 +215,30 @@ mlir_aie_80211_phy_impl::mlir_aie_80211_phy_impl(const char* path_xclbin,
 
 mlir_aie_80211_phy_impl::~mlir_aie_80211_phy_impl() {}
 
+void mlir_aie_80211_phy_impl::start_profiling(const std::string& csv_path)
+{
+    stop_profiling();
+    if (csv_path.empty())
+        return;
+    _profile.clear();
+    _profile.open(csv_path, std::ios::out | std::ios::trunc);
+    if (!_profile)
+        throw std::runtime_error("Cannot open NPU profile: " + csv_path);
+    _profile << "scope,work_id,chunk_index,input_offset,input_items,output_items,stage,duration_ns\n";
+    _profile_work_id = 0;
+}
+
+void mlir_aie_80211_phy_impl::stop_profiling()
+{
+    if (_profile.is_open()) {
+        _profile.flush();
+        const bool failed = !_profile;
+        _profile.close();
+        if (failed)
+            throw std::runtime_error("Failed writing NPU profile");
+    }
+}
+
 void mlir_aie_80211_phy_impl::set_nominal_frequency(double nominal_frequency)
 {
     phy_frequency_rtp(nominal_frequency);
@@ -210,6 +261,8 @@ int mlir_aie_80211_phy_impl::general_work(int noutput_items,
                                           gr_vector_const_void_star& input_items,
                                           gr_vector_void_star& output_items)
 {
+    const bool profiling = _profile.is_open();
+    const auto work_begin = profiling ? profile_clock::now() : profile_clock::time_point{};
     auto in = static_cast<const phy_input_type*>(input_items[0]);
     auto out = static_cast<phy_output_type*>(output_items[0]);
 
@@ -264,15 +317,38 @@ int mlir_aie_80211_phy_impl::general_work(int noutput_items,
     const uint64_t output_abs_start = nitems_written(0);
     int total_produced = 0;
 
-    const auto launch = [this, in](int chunk_idx) {
+    struct chunk_profile {
+        profile_clock::time_point submitted;
+        std::int64_t copy_ns = 0, input_sync_ns = 0, start_ns = 0;
+        std::int64_t wait_ns = 0, output_sync_ns = 0, metadata_sync_ns = 0;
+        std::int64_t unpack_ns = 0, residence_ns = 0;
+        int produced = 0;
+    };
+    std::vector<chunk_profile> measurements(profiling ? n_chunks : 0);
+    const auto ns = [](auto begin, auto end) {
+        return std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+    };
+    const auto launch = [this, in, profiling, &measurements, &ns](int chunk_idx) {
         auto& slot = _slots[chunk_idx % _slots.size()];
+        const auto begin = profiling ? profile_clock::now() : profile_clock::time_point{};
         std::memcpy(slot.input,
                     in + (chunk_idx * _VECTOR_SIZE),
                     _VECTOR_SIZE * sizeof(phy_input_type));
+        const auto copied = profiling ? profile_clock::now() : profile_clock::time_point{};
         slot.input_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+        const auto synced = profiling ? profile_clock::now() : profile_clock::time_point{};
         slot.run.start();
+        if (profiling) {
+            const auto started = profile_clock::now();
+            auto& m = measurements[chunk_idx];
+            m.submitted = synced;
+            m.copy_ns = ns(begin, copied);
+            m.input_sync_ns = ns(copied, synced);
+            m.start_ns = ns(synced, started);
+        }
     };
 
+    const auto pipeline_begin = profiling ? profile_clock::now() : profile_clock::time_point{};
     const int depth = static_cast<int>(_slots.size());
     for (int i = 0; i < std::min(depth, n_chunks); ++i) {
         launch(i);
@@ -280,15 +356,28 @@ int mlir_aie_80211_phy_impl::general_work(int noutput_items,
     for (int i = 0; i < n_chunks; ++i) {
         auto& slot = _slots[i % depth];
 
+        const auto wait_begin = profiling ? profile_clock::now() : profile_clock::time_point{};
         slot.run.wait();
+        const auto waited = profiling ? profile_clock::now() : profile_clock::time_point{};
         slot.output_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+        const auto output_synced = profiling ? profile_clock::now() : profile_clock::time_point{};
         slot.metadata_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+        const auto metadata_synced = profiling ? profile_clock::now() : profile_clock::time_point{};
+        if (profiling) {
+            auto& m = measurements[i];
+            m.wait_ns = ns(wait_begin, waited);
+            m.output_sync_ns = ns(waited, output_synced);
+            m.metadata_sync_ns = ns(output_synced, metadata_synced);
+            m.residence_ns = ns(m.submitted, waited);
+        }
 
         // Keep the command queue fed while this slot is retired on the host.
         if (i + depth < n_chunks) {
             launch(i + depth);
         }
 
+        const auto unpack_begin = profiling ? profile_clock::now() : profile_clock::time_point{};
+        const int produced_before = total_produced;
         for (int tile_idx = 0; tile_idx < _N_TILES; ++tile_idx) {
             const tile_metadata& tile_meta = slot.metadata[tile_idx];
 
@@ -368,14 +457,56 @@ int mlir_aie_80211_phy_impl::general_work(int noutput_items,
 
             total_produced += tile_len;
         }
+        if (profiling) {
+            measurements[i].unpack_ns = ns(unpack_begin, profile_clock::now());
+            measurements[i].produced = total_produced - produced_before;
+        }
     }
 
+    const auto pipeline_end = profiling ? profile_clock::now() : profile_clock::time_point{};
     const int processed_items = n_chunks * _VECTOR_SIZE;
     // All runs are finished. Preserve any tag consumed inside the last vector
     // so the next general_work call applies it before launching more samples.
     if (frequency_batch.next_frequency)
         set_nominal_frequency(*frequency_batch.next_frequency);
     consume_each(processed_items);
+
+    if (profiling) {
+        const auto work_end = profile_clock::now();
+        const auto write = [&](const char* scope, int chunk, std::uint64_t offset,
+                               int consumed, int produced, const char* stage,
+                               std::int64_t duration) {
+            _profile << scope << ',' << _profile_work_id << ',' << chunk << ','
+                     << offset << ',' << consumed << ',' << produced << ','
+                     << stage << ',' << duration << '\n';
+        };
+        for (int i = 0; i < n_chunks; ++i) {
+            const auto& m = measurements[i];
+            const auto emit = [&](const char* stage, std::int64_t duration) {
+                write("chunk", i, input_abs_start + std::uint64_t(i) * _VECTOR_SIZE,
+                      _VECTOR_SIZE, m.produced, stage, duration);
+            };
+            emit("input_copy", m.copy_ns);
+            emit("input_sync", m.input_sync_ns);
+            emit("run_start", m.start_ns);
+            emit("run_wait", m.wait_ns);
+            emit("output_sync", m.output_sync_ns);
+            emit("metadata_sync", m.metadata_sync_ns);
+            emit("output_unpack", m.unpack_ns);
+            // Overlaps other chunks; never add this to the stage durations.
+            emit("submit_to_wait_complete", m.residence_ns);
+        }
+        const auto emit_work = [&](const char* stage, std::int64_t duration) {
+            write("work", -1, input_abs_start, processed_items, total_produced, stage, duration);
+        };
+        emit_work("prepare", ns(work_begin, pipeline_begin));
+        emit_work("pipeline", ns(pipeline_begin, pipeline_end));
+        emit_work("finalize", ns(pipeline_end, work_end));
+        emit_work("work_total", ns(work_begin, work_end));
+        ++_profile_work_id;
+        if (!_profile)
+            throw std::runtime_error("Failed writing NPU profile");
+    }
 
     return total_produced;
 }

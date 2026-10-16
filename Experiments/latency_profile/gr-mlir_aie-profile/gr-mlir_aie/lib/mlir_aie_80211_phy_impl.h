@@ -18,6 +18,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <fstream>
 #include <vector>
 
 namespace gr {
@@ -99,6 +100,9 @@ private:
 
     void* bufInstr;
 
+    std::ofstream _profile;
+    std::uint64_t _profile_work_id = 0;
+
 public:
     mlir_aie_80211_phy_impl(const char* path_xclbin,
                              const char* path_insts_bin,
@@ -115,6 +119,8 @@ public:
 
     void set_nominal_frequency(double nominal_frequency) override;
     double nominal_frequency() const override;
+    void start_profiling(const std::string& csv_path) override;
+    void stop_profiling() override;
 
     int general_work(int noutput_items,
                      gr_vector_int& ninput_items,
