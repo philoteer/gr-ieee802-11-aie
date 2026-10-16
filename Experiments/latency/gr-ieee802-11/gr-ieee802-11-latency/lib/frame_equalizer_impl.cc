@@ -22,6 +22,9 @@
 #include "equalizer/ls.h"
 #include "equalizer/sta.h"
 #include "frame_equalizer_impl.h"
+#include <cerrno>
+#include <system_error>
+#include <time.h>
 #include "utils.h"
 #include <gnuradio/io_signature.h>
 
@@ -259,6 +262,18 @@ int frame_equalizer_impl::general_work(int noutput_items,
         }
 
         if (d_current_symbol > 2) {
+            if (d_current_symbol == d_frame_symbols + 2) {
+                // All payload symbols have been equalized/demapped. Attach the
+                // native endpoint to this final output vector; downstream
+                // decoding identifies the packet but must not retimestamp it.
+                timespec completed;
+                if (clock_gettime(CLOCK_MONOTONIC, &completed) != 0)
+                    throw std::system_error(errno, std::generic_category(), "clock_gettime");
+                const uint64_t ns = static_cast<uint64_t>(completed.tv_sec) *
+                                        1000000000ULL + completed.tv_nsec;
+                add_item_tag(0, nitems_written(0) + o, pmt::intern("phy_equalized_ns"),
+                             pmt::from_uint64(ns), alias_pmt());
+            }
             o++;
             pmt::pmt_t pdu = pmt::make_dict();
             message_port_pub(

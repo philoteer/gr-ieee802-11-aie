@@ -1,4 +1,4 @@
-"""Compare native publication with reported timestamps and observer bypass.
+"""Compare final equalizer timestamps with reported intervals and observer bypass.
 
 Run after sourcing ./local-env.sh from the receiver experiment directory.
 The parent builds a temporary Linux/GNU Radio 3.10 ABI probe and starts a fresh
@@ -68,18 +68,19 @@ def child(args):
             rows = []
             for label in labels:
                 index = int(label.removeprefix("wifi-frame-"))
-                start, end, published, completed = [probe.latency_probe_get(index, k) for k in range(4)]
+                start, end, published, completed, tag_observed = [probe.latency_probe_get(index, k) for k in range(5)]
                 assert start and end and published and completed, (mode, label)
-                assert published >= completed >= start, (mode, label)
+                assert published >= tag_observed >= completed >= start, (mode, label)
                 row = {"native_us": (completed - start) / 1000,
-                       "timestamp_to_publish_us": (published - completed) / 1000}
+                       "equalizer_tag_delay_us": (tag_observed - completed) / 1000,
+                       "decode_after_equalized_us": (published - completed) / 1000}
                 if mode != "native_only":
                     state = observer.frames[label]
                     assert state["reported"]
                     assert (state["start"], state["end"], state["done"]) == (start, end, completed)
                     row["delivery_us"] = (state["observed"] - published) / 1000
-                    # Independent publication-time estimate minus actual report.
-                    row["report_vs_publish_us"] = ((published - start) - (state["done"] - state["start"])) / 1000
+                    # Independent equalizer-output observation, before decoding.
+                    row["report_vs_equalizer_tag_us"] = ((tag_observed - start) - (state["done"] - state["start"])) / 1000
                     if mode == "report_delayed_2ms":
                         assert row["delivery_us"] >= 2000
                 rows.append(row)

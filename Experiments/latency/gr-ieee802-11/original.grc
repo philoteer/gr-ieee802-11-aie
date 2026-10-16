@@ -382,9 +382,9 @@ blocks:
   parameters:
     _source_code: "import json\nimport threading\nimport time\n\nimport pmt\nfrom\
       \ gnuradio import gr\n\n\nclass blk(gr.basic_block):\n    \"\"\"Match native\
-      \ input and decoder timestamps without processing IQ.\n\n    Boundary messages\
-      \ preserve the source's timestamp_ns. Completion uses\n    phy_completed_ns\
-      \ from the local C++ decoder, before PDU publication.\n    Python delivery,\
+      \ input and equalizer timestamps without processing IQ.\n\n    Boundary messages\
+      \ preserve the source's timestamp_ns. Completion uses\n    phy_equalized_ns\
+      \ from the final equalized output symbol. Decoding only identifies the frame.\n    Python delivery,\
       \ matching, and printing delays are excluded from the\n    reported interval.\
       \ All timestamps use the host monotonic clock.\n\n    Attributes:\n        by_payload\
       \ (dict): Payload bytes mapped to frame label and MAC sequence.\n        frames\
@@ -392,7 +392,7 @@ blocks:
       \ in nanoseconds, plus delivery time and a reported flag.\n        lock (threading.Lock):\
       \ Protects frame state and counters across callbacks.\n        count (int):\
       \ Number of frames with a printed latency measurement.\n        total_ms (float):\
-      \ Sum of reported start-to-decoded latencies.\n        unmatched (int): Decoded\
+      \ Sum of reported start-to-equalized latencies.\n        unmatched (int): Decoded\
       \ packets without a matching payload/sequence pair.\n        duplicates (int):\
       \ Additional decoded packets for an already seen frame.\n    \"\"\"\n\n    def\
       \ __init__(self, metadata_file=\"../wifi_latency.sigmf-meta\"):\n        \"\"\
@@ -444,7 +444,7 @@ blocks:
       \ are the payload.\n        Exact payload and sequence matching avoids shifting\
       \ identities after\n        a lost or reordered packet. The first completion\
       \ wins for duplicates.\n\n        Args:\n            message (pmt.pmt_t): Decoder\
-      \ PDU with phy_completed_ns metadata and\n                MAC bytes as a blob\
+      \ PDU carrying unchanged phy_equalized_ns metadata and\n                MAC bytes as a blob\
       \ or u8vector. Malformed envelopes are ignored.\n\n        Raises:\n       \
       \     RuntimeError: If native completion metadata is absent, indicating\n  \
       \              an incompatible decoder (usually the system library).\n     \
@@ -452,9 +452,9 @@ blocks:
       \ endpoint.\n        observed = time.monotonic_ns()\n        if not pmt.is_pair(message):\n\
       \            return\n        data = pmt.cdr(message)\n        if not (pmt.is_blob(data)\
       \ or pmt.is_u8vector(data)):\n            return\n        metadata = pmt.car(message)\n\
-      \        completed = pmt.dict_ref(metadata, pmt.intern(\"phy_completed_ns\"\
+      \        completed = pmt.dict_ref(metadata, pmt.intern(\"phy_equalized_ns\"\
       ), pmt.PMT_NIL) if pmt.is_dict(metadata) else pmt.PMT_NIL\n        if not pmt.is_uint64(completed):\n\
-      \            raise RuntimeError(\"Decoder lacks phy_completed_ns; source ./local-env.sh\"\
+      \            raise RuntimeError(\"PDU lacks phy_equalized_ns; source ./local-env.sh\"\
       )\n        completed = pmt.to_uint64(completed)\n        mac = bytes(pmt.to_python(data))\n\
       \        match = self.by_payload.get(mac[24:]) if len(mac) >= 24 else None\n\
       \        with self.lock:\n            if match is None or int.from_bytes(mac[22:24],\
@@ -467,7 +467,7 @@ blocks:
       \ and completion exist.\n\n        The caller must hold self.lock. Completion\
       \ may be observed before the\n        annotation's final windowing-tail tag;\
       \ reporting waits for all three\n        timestamps without changing the original\
-      \ completion time. The tail\n        latency can be negative if decoding precedes\
+      \ completion time. The tail\n        latency can be negative if equalization precedes\
       \ the end-tag timestamp.\n\n        Args:\n            label (str): Known frame\
       \ label identifying the retained timestamps.\n        \"\"\"\n        # Called\
       \ with lock held. Output delivery can precede the annotation's\n        # final\
@@ -477,8 +477,8 @@ blocks:
       \ = (frame[\"done\"] - frame[\"start\"]) / 1e6\n        tail_ms = (frame[\"\
       done\"] - frame[\"end\"]) / 1e6\n        frame[\"reported\"] = True\n      \
       \  self.count += 1\n        self.total_ms += elapsed_ms\n        print(f\"[PHY\
-      \ latency estimate] {label}: \"\n              f\"start-to-decoded={elapsed_ms:.4f}\
-      \ ms, \"\n              f\"end-to-decoded={tail_ms:.4f} ms, \"\n           \
+      \ latency estimate] {label}: \"\n              f\"start-to-equalized={elapsed_ms:.4f}\
+      \ ms, \"\n              f\"end-to-equalized={tail_ms:.4f} ms, \"\n           \
       \   f\"mean={self.total_ms / self.count:.4f} ms (n={self.count})\",\n      \
       \        flush=True)\n\n    def finish(self):\n        \"\"\"Print matching\
       \ counters and missing frame IDs after workers finish.\n\n        Call after\
@@ -497,21 +497,6 @@ blocks:
     metadata_file: file_path+"-meta"
     minoutbuf: '0'
   states:
-    _io_cache: '(''PHY latency (native timestamps)'', ''blk'', [(''metadata_file'',
-      "''../wifi_latency.sigmf-meta''")], [(''boundaries'', ''message'', 1), (''decoded'',
-      ''message'', 1)], [], "Match native input and decoder timestamps without processing
-      IQ.\n\n    Boundary messages preserve the source''s timestamp_ns. Completion
-      uses\n    phy_completed_ns from the local C++ decoder, before PDU publication.\n    Python
-      delivery, matching, and printing delays are excluded from the\n    reported
-      interval. All timestamps use the host monotonic clock.\n\n    Attributes:\n        by_payload
-      (dict): Payload bytes mapped to frame label and MAC sequence.\n        frames
-      (dict): Frame labels mapped to native start, end, and done\n            timestamps
-      in nanoseconds, plus delivery time and a reported flag.\n        lock (threading.Lock):
-      Protects frame state and counters across callbacks.\n        count (int): Number
-      of frames with a printed latency measurement.\n        total_ms (float): Sum
-      of reported start-to-decoded latencies.\n        unmatched (int): Decoded packets
-      without a matching payload/sequence pair.\n        duplicates (int): Additional
-      decoded packets for an already seen frame.\n    ", [])'
     bus_sink: false
     bus_source: false
     bus_structure: null

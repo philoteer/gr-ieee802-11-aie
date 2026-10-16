@@ -22,9 +22,6 @@
 #include <gnuradio/io_signature.h>
 #include <boost/crc.hpp>
 #include <iomanip>
-#include <cerrno>
-#include <system_error>
-#include <time.h>
 
 using namespace gr::ieee802_11;
 
@@ -115,6 +112,13 @@ public:
                 }
             }
 
+            // Completion arrives on the final equalized vector, not the first
+            // frame-header vector. Preserve it before invoking Viterbi/CRC.
+            for (const auto& tag : tags) {
+                if (pmt::eq(tag.key, pmt::intern("phy_equalized_ns")))
+                    d_meta = pmt::dict_add(d_meta, tag.key, tag.value);
+            }
+
             if (copied < d_frame.n_sym) {
                 dout << "copy one symbol, copied " << copied << " out of "
                      << d_frame.n_sym << std::endl;
@@ -172,16 +176,9 @@ public:
         d_meta =
             pmt::dict_add(d_meta, pmt::mp("dlt"), pmt::from_long(LINKTYPE_IEEE802_11));
 
-        // Host-side PHY completion: decoded, CRC-checked and PDU ready. Stamp
-        // before message publication so scheduler/GIL delays cannot inflate it.
-        timespec completed;
-        if (clock_gettime(CLOCK_MONOTONIC, &completed) != 0)
-            throw std::system_error(errno, std::generic_category(), "clock_gettime");
-        const uint64_t completed_ns = static_cast<uint64_t>(completed.tv_sec) *
-                                          1000000000ULL + completed.tv_nsec;
-        const auto metadata = pmt::dict_add(d_meta, pmt::intern("phy_completed_ns"),
-                                            pmt::from_uint64(completed_ns));
-        message_port_pub(pmt::mp("out"), pmt::cons(metadata, blob));
+        // The PDU is used for identity matching only. Its measurement endpoint
+        // remains the timestamp supplied by frame_equalizer on the final symbol.
+        message_port_pub(pmt::mp("out"), pmt::cons(d_meta, blob));
     }
 
     void deinterleave()

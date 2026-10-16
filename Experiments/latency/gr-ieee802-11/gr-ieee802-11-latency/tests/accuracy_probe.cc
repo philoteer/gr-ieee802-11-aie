@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 // Linux-only validation probe, built separately and loaded with LD_PRELOAD.
-// Observe source tags and decoder publication independently of the reporter.
+// Observe ingress/final equalizer tags and decoder publication independently.
 // No printing, Python calls, or file I/O occurs on the receiver threads.
 #include <gnuradio/block.h>
 #include <gnuradio/basic_block.h>
@@ -10,11 +10,13 @@
 #include <array>
 #include <cstring>
 #include <mutex>
+#include <map>
 #include <string>
 
 namespace {
 // Capture generator uses monotonically numbered payload/annotation IDs.
-std::array<std::array<uint64_t, 4>, 4096> stamps{};
+std::array<std::array<uint64_t, 5>, 4096> stamps{};
+std::map<uint64_t, uint64_t> equalized_events;
 std::mutex guard;
 uint64_t now_ns()
 {
@@ -29,6 +31,7 @@ extern "C" void latency_probe_reset()
     std::lock_guard<std::mutex> lock(guard);
     for (auto& frame : stamps)
         frame.fill(0);
+    equalized_events.clear();
 }
 
 extern "C" uint64_t latency_probe_get(unsigned frame, unsigned event)
@@ -42,6 +45,11 @@ void gr::block::add_item_tag(unsigned int port, const gr::tag_t& tag)
     using fn = void (*)(gr::block*, unsigned int, const gr::tag_t&);
     static auto original = reinterpret_cast<fn>(
         dlsym(RTLD_NEXT, "_ZN2gr5block12add_item_tagEjRKNS_5tag_tE"));
+    if (name() == "frame_equalizer" && pmt::eq(tag.key, pmt::intern("phy_equalized_ns"))) {
+        const auto observed = now_ns();
+        std::lock_guard<std::mutex> lock(guard);
+        equalized_events.emplace(pmt::to_uint64(tag.value), observed);
+    }
     if (name() == "sigmf_tag_injector" && pmt::is_dict(tag.value) &&
         (pmt::eq(tag.key, pmt::intern("frame_start")) ||
          pmt::eq(tag.key, pmt::intern("frame_end")))) {
@@ -73,11 +81,12 @@ void gr::basic_block::message_port_pub(pmt::pmt_t port, pmt::pmt_t msg)
         if (pmt::blob_length(data) >= 46 &&
             std::memcmp(bytes + 24, "WIFI-LATENCY:", 13) == 0) {
             auto index = std::stoul(std::string(bytes + 37, 8));
-            auto completed = pmt::dict_ref(pmt::car(msg), pmt::intern("phy_completed_ns"),
+            auto completed = pmt::dict_ref(pmt::car(msg), pmt::intern("phy_equalized_ns"),
                                             pmt::PMT_NIL);
             std::lock_guard<std::mutex> lock(guard);
             stamps.at(index)[2] = published;
             stamps.at(index)[3] = pmt::to_uint64(completed);
+            stamps.at(index)[4] = equalized_events.at(pmt::to_uint64(completed));
         }
     }
     original(this, port, msg);

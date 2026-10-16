@@ -42,10 +42,12 @@ The flowgraph exits on file EOF and prints a matching summary.
 3. IQ goes directly to the conventional receiver. A native `latency_tag_monitor`
    **side tap** forwards boundary dictionaries to Python, preserving their
    original timestamps. The tap's scheduling does not retimestamp the events.
-4. The local `decode_mac` stamps `phy_completed_ns` after decoding, CRC checking,
-   and PDU preparation, immediately before adding that field and publishing.
-5. Python matches the decoded payload and MAC sequence against the annotation
-   metadata, then subtracts the native timestamps and prints the result.
+4. The local `frame_equalizer` stamps `phy_equalized_ns` after producing the
+   frame's final equalized/hard-demapped output symbol. This is a stream tag on
+   the final 48-byte vector, before payload deinterleaving/Viterbi/CRC.
+5. `decode_mac` collects that final-vector tag and carries it unchanged into the
+   decoded PDU. Python uses the decoded payload and MAC sequence only to identify
+   the annotated frame, then subtracts the earlier native timestamps.
 
 The capture uses unique ASCII payloads, 24-byte MAC headers, and a decoder that
 removes the FCS. Dropped frames do not shift matching. Either message input may
@@ -53,13 +55,14 @@ arrive first; duplicates and unmatched outputs are counted. Native completion
 metadata is mandatory: the reporter never falls back to Python arrival time.
 `frames[label]["observed"]` retains Python arrival time for diagnostics only.
 
-- **start-to-decoded:** native input-start to native decoder completion.
-- **end-to-decoded:** native input-end to the same completion timestamp.
-- **mean:** running mean of start-to-decoded over matched frames.
+- **start-to-equalized:** native input-start to final equalized symbol completion.
+- **end-to-equalized:** native input-end to the same completion timestamp.
+- **mean:** running mean of start-to-equalized over matched frames.
 
-Python delivery, payload matching, and printing are excluded from these
-intervals. They can still contend for CPU resources; that remaining observer
-effect is checked below.
+Payload decoding, CRC checking, Python delivery, matching, and printing are
+excluded from these intervals. Decoding still determines which frames can be
+identified, so only CRC-valid matched frames produce samples. Downstream work
+can still contend for CPU resources; the observer effect is checked below.
 
 ## Accuracy checks
 
@@ -71,12 +74,14 @@ source ./local-env.sh
 
 Regression tests check unchanged forwarding of native timestamps, reversed
 message delivery, lost/duplicate packets, sequence mismatch, much later Python
-observation, and rejection of decoders without native timestamps. They load the
-epy source directly from `original.grc`.
+observation, and rejection of PDUs without equalizer timestamps. A native decoder
+regression test checks that a tag arriving on the final vector, rather than the
+frame-header vector, is preserved exactly and not replaced with decoder time.
+The tests load the epy source directly from `original.grc`.
 
 The accuracy check compiles a temporary, Linux/GNU Radio 3.10 ABI-specific native
-probe. It independently observes the original injector's tags and decoder PDU
-publication using `LD_PRELOAD`. No global installation is changed, and the probe
+probe. It independently observes ingress tags, emission of the final equalizer
+tag, and decoder PDU publication using `LD_PRELOAD`. No global installation is changed, and the probe
 is not used by normal runs. It expects the generated latency capture with
 numeric frame IDs below 4096. The probe buffers timestamps without per-event
 printing or file I/O. Configurations run in shuffled order using the same local
@@ -84,37 +89,38 @@ decoder and the same probe.
 
 Verification on this host: **30 replays × 20 frames = 600 frames per configuration**.
 
-| Configuration | Mean native start-to-decoded | Python delivery delay, mean |
+| Configuration | Mean native start-to-equalized | Python delivery after decoded PDU, mean |
 | --- | ---: | ---: |
-| Reporter printing | 0.7977 ms | 32.6 µs |
-| Reporter, printing disabled | 0.8047 ms | 32.5 µs |
-| Reporter deliberately delayed by 2 ms | 0.8069 ms | 2090.1 µs |
-| Native baseline: side tap and Python reporter disconnected | 0.7934 ms | — |
+| Reporter printing | 0.7057 ms | 32.3 µs |
+| Reporter, printing disabled | 0.7124 ms | 31.2 µs |
+| Reporter deliberately delayed by 2 ms | 0.7292 ms | 2089.8 µs |
+| Native baseline: side tap and Python reporter disconnected | 0.6892 ms | — |
 
 All frames matched, and input/completion timestamps agreed exactly with the
-independently captured native values. The completion field preceded independent
-PDU publication by **1.53 µs mean, 2.20 µs p95, 17.71 µs maximum** in the printing
-configuration. This is the short metadata-insertion interval between the two
-different endpoint locations. Even the deliberately late Python callback used
-the original native timestamp, rather than adding its ~2 ms delay.
+independently captured native values. The completion field preceded the probe's
+observation of the final equalizer tag by **0.90 µs mean, 1.43 µs p95** in the
+printing configuration. Decoder publication followed equalization by a further
+**71.2 µs on average**, which is now excluded from the reported latency. Even a
+deliberately late Python callback retained the original equalizer timestamp.
 
 The printing configuration's mean differed from the observer-free baseline by
-**4.3 µs**; per-replay mean standard deviations were about **22–27 µs** for the
+**16.5 µs**; per-replay mean standard deviations were about **26–34 µs** for the
 baseline and normal reporting configurations. This suggests small remaining
 observer interference in this test, not a guaranteed bound for other loads.
 
 ### Remaining limits
 
-The publication agreement is a validation of **native host-side timestamping**,
+The equalizer-tag agreement validates **native host-side timestamping**,
 not a claim of microsecond absolute RF latency accuracy. The input clock is still
 taken once per injector scheduler buffer. The throttle releases bursts of up to
 1024 samples (51.2 µs at 20 MSamples/s); downstream callbacks can merge bursts.
 These timestamps therefore approximate arrival at the receiver, not individual
 sample arrival at an antenna. OS scheduling and buffering remain part of the
 measured receiver latency. The annotation includes a final windowing tail, so an
-early decode can in principle produce a negative end-to-decoded estimate.
+early equalizer completion can produce a negative end-to-equalized estimate.
 
-This endpoint includes Viterbi decoding and CRC checking. It is later than the
-NPU experiment's equalizer chunk-completion endpoint, so those figures still
-measure different portions of the PHY pipeline. Timing results vary by host
-load, scheduler behavior, and output destination.
+The endpoint now follows the NPU experiment: completion of equalization/demapping,
+before payload Viterbi decoding and CRC checking. CPU timestamps are frame/final-
+symbol granular; the NPU timestamp is completion of the chunk containing the
+annotated frame end and includes batching effects. See `../README.md` for the
+common endpoint definition and remaining granularity differences.

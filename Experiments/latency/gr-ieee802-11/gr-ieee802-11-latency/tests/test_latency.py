@@ -52,7 +52,7 @@ class NativeLatencyTest(unittest.TestCase):
         mac.extend(f"WIFI-LATENCY:{frame:08d}".encode("ascii"))
         meta = pmt.make_dict()
         if completed is not None:
-            meta = pmt.dict_add(meta, pmt.intern("phy_completed_ns"),
+            meta = pmt.dict_add(meta, pmt.intern("phy_equalized_ns"),
                                 pmt.from_uint64(completed))
         message = pmt.cons(meta, pmt.init_u8vector(len(mac), list(mac)))
         # A much later Python observation must never replace native completion.
@@ -99,8 +99,31 @@ class NativeLatencyTest(unittest.TestCase):
         self.assertIn("missing: wifi-frame-00000000", self.output.getvalue())
 
     def test_rejects_decoder_without_native_timestamp(self):
-        with self.assertRaisesRegex(RuntimeError, "phy_completed_ns"):
+        with self.assertRaisesRegex(RuntimeError, "phy_equalized_ns"):
             self.decoded(1, None)
+
+    def test_decoder_preserves_final_symbol_endpoint(self):
+        # Three BPSK 1/2 symbols encode an empty MAC plus its zero FCS. The
+        # completion tag deliberately arrives after the first-vector metadata.
+        tags = []
+        for offset, key, value in ((0, "frame bytes", 4), (0, "encoding", 0),
+                                   (2, "phy_equalized_ns", 123456789)):
+            tag = gr.tag_t()
+            tag.offset, tag.key, tag.value = offset, pmt.intern(key), pmt.from_uint64(value)
+            tags.append(tag)
+        top = gr.top_block()
+        source = blocks.vector_source_b([0] * 144, False, 48, tags)
+        decoder = ieee802_11.decode_mac(False, False)
+        messages = blocks.message_debug()
+        top.connect(source, decoder)
+        top.msg_connect((decoder, "out"), (messages, "store"))
+        top.start()
+        top.wait()
+        self.assertEqual(messages.num_messages(), 1)
+        metadata = pmt.car(messages.get_message(0))
+        self.assertEqual(pmt.to_uint64(pmt.dict_ref(
+            metadata, pmt.intern("phy_equalized_ns"), pmt.PMT_NIL)), 123456789)
+        self.assertFalse(pmt.dict_has_key(metadata, pmt.intern("phy_completed_ns")))
 
 
 if __name__ == "__main__":
