@@ -6,7 +6,7 @@ options:
     cmake_opt: ''
     comment: ''
     copyright: ''
-    description: NPU PHY energy measurement on the shared 20 MHz stress-test capture.
+    description: NPU PHY receiver baseline for the latency profiling experiment.
     gen_cmake: 'On'
     gen_linking: dynamic
     generate_options: no_gui
@@ -18,12 +18,12 @@ options:
     qt_qss_theme: ''
     realtime_scheduling: ''
     run: 'True'
-    run_command: bash -c 'export LD_LIBRARY_PATH="$(dirname "$2")/../../../../gr-foo-fixed/build/lib${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}";
+    run_command: bash -c 'export LD_LIBRARY_PATH="$(dirname "$2")/../../gr-foo-modified/build/lib${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}";
       exec "$1" -u "$2"' -- {python} {filename}
     run_options: run
     sizing_mode: fixed
     thread_safe_setters: ''
-    title: NPU Energy Experiment
+    title: NPU Latency Profile Experiment
     window_size: (1000,1000)
   states:
     bus_sink: false
@@ -37,8 +37,8 @@ blocks:
 - name: data_dir
   id: variable
   parameters:
-    comment: Dataset paths are relative to the generated script in Experiments/energy/NPU.
-    value: str(__import__("pathlib").Path(globals().get("__file__", "Experiments/energy/NPU/wifi_rx.py")).resolve().parents[3]
+    comment: Dataset paths are relative to the generated script in Experiments/latency_profile.
+    value: str(__import__("pathlib").Path(globals().get("__file__", "Experiments/latency_profile/wifi_rx.py")).resolve().parents[2]
       / "AI-model-CNN-Channel-est" / "data")
   states:
     bus_sink: false
@@ -98,9 +98,9 @@ blocks:
 - name: kernel_dir
   id: variable
   parameters:
-    comment: Build artifacts for the base 16-tile, 16384-sample NPU PHY.
-    value: str(__import__("pathlib").Path(data_dir).parents[1] / "AI-model-CNN-Channel-est"
-      / "kernel" / "build")
+    comment: LS artifacts for the 16-tile, 16384-sample NPU PHY.
+    value: str(__import__("pathlib").Path(data_dir).parents[1] / "Experiments"
+      / "xclbin_default" / "LS")
   states:
     bus_sink: false
     bus_source: false
@@ -300,8 +300,8 @@ blocks:
     minoutbuf: '0'
     nominal_frequency: freq
     num_slots: '2'
-    path_insts_bin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/Experiments/xclbin_default/LS/insts.bin
-    path_xclbin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/Experiments/xclbin_default/LS/final.xclbin
+    path_insts_bin: kernel_dir + "/insts.bin"
+    path_xclbin: kernel_dir + "/final.xclbin"
     weights_path: ''''''
   states:
     bus_sink: false
