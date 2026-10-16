@@ -1,0 +1,84 @@
+_entry_point _main_init
+_symbol core_1_2 _after _main_init
+_symbol _main_init 0
+_reserved DMb 0x00000 0x40000 // Don't put data in code memory
+_stack DM_stack 0x70000 0x800 // stack for core
+
+// mapping neighbors tile memory
+_reserved DMb 0x40000 0x10000  // No tile with memory exists to the south.
+// west -------------------------------------------------
+_reserved DMb 0x50000 0x10000  // Don't allocate variables in west neighbor
+
+_symbol out_autocorr_buff_0 0x50400 8192
+_extern out_autocorr_buff_0
+_reserved DMb 0x50400 8192
+
+_symbol out_autocorr_buff_1 0x54000 8192
+_extern out_autocorr_buff_1
+_reserved DMb 0x54000 8192
+
+_symbol in_mem_0_cons_buff_0 0x58000 4096
+_extern in_mem_0_cons_buff_0
+_reserved DMb 0x58000 4096
+
+_symbol in_mem_0_cons_buff_1 0x5C000 4096
+_extern in_mem_0_cons_buff_1
+_reserved DMb 0x5C000 4096
+
+// north -------------------------------------------------
+_reserved DMb 0x60000 0x10000  // Don't allocate variables in north neighbor
+
+_symbol fft_out_meta_buff_0 0x68000 256
+_extern fft_out_meta_buff_0
+_reserved DMb 0x68000 256
+
+_symbol fft_out_meta_buff_1 0x6C000 256
+_extern fft_out_meta_buff_1
+_reserved DMb 0x6C000 256
+
+_symbol fft_out_buff_0 0x60400 8192
+_extern fft_out_buff_0
+_reserved DMb 0x60400 8192
+
+_symbol fft_out_buff_1 0x64000 8192
+_extern fft_out_buff_1
+_reserved DMb 0x64000 8192
+
+// east -------------------------------------------------
+_symbol sync_short_out_meta_cons_buff_0 0x71D00 64
+_extern sync_short_out_meta_cons_buff_0
+_reserved DMb 0x71D00 64
+
+_symbol sync_short_out_meta_cons_buff_1 0x75500 64
+_extern sync_short_out_meta_cons_buff_1
+_reserved DMb 0x75500 64
+
+_symbol sync_short_out_cons_buff_0 0x70800 5376
+_extern sync_short_out_cons_buff_0
+_reserved DMb 0x70800 5376
+
+_symbol sync_short_out_cons_buff_1 0x74000 5376
+_extern sync_short_out_cons_buff_1
+_reserved DMb 0x74000 5376
+
+_symbol sync_long_out_meta_buff_0 0x79000 64
+_extern sync_long_out_meta_buff_0
+_reserved DMb 0x79000 64
+
+_symbol sync_long_out_meta_buff_1 0x7D000 64
+_extern sync_long_out_meta_buff_1
+_reserved DMb 0x7D000 64
+
+_symbol sync_long_out_buff_0 0x78000 4096
+_extern sync_long_out_buff_0
+_reserved DMb 0x78000 4096
+
+_symbol sync_long_out_buff_1 0x7C000 4096
+_extern sync_long_out_buff_1
+_reserved DMb 0x7C000 4096
+
+// end mapping neighbors tile memory
+
+_reserved DMb 0x80000 0x80000 // And everything else the core can't see
+_include _file sync_long_cf.o
+_resolve _main core_1_2

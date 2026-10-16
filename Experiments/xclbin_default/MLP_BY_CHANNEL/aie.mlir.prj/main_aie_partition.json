@@ -1,0 +1,33 @@
+{
+  "aie_partition": {
+    "name": "QoS",
+    "operations_per_cycle": "2048",
+    "inference_fingerprint": "23423",
+    "pre_post_fingerprint": "12345",
+    "partition": {
+      "column_width": 4,
+      "start_columns": [
+        0
+      ]
+    },
+    "PDIs": [
+      {
+        "uuid": "2ee40b5f-8b62-46eb-9e75-8d3d6925bf4d",
+        "file_name": "/home/piloteer/xdna_phy/gr-ieee802-11-aie/AI-model-CNN-Channel-est/kernel/build/aie.mlir.prj/main.pdi",
+        "cdo_groups": [
+          {
+            "name": "DPU",
+            "type": "PRIMARY",
+            "pdi_id": "0x01",
+            "dpu_kernel_ids": [
+              "0x901"
+            ],
+            "pre_cdo_groups": [
+              "0xC1"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

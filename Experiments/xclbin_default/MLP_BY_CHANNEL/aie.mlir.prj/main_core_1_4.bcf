@@ -1,0 +1,86 @@
+_entry_point _main_init
+_symbol core_1_4 _after _main_init
+_symbol _main_init 0
+_reserved DMb 0x00000 0x40000 // Don't put data in code memory
+_stack DM_stack 0x70000 0xA00 // stack for core
+
+// mapping neighbors tile memory
+// south -------------------------------------------------
+_reserved DMb 0x40000 0x10000  // Don't allocate variables in south neighbor
+
+_symbol fft_out_meta_buff_0 0x48000 256
+_extern fft_out_meta_buff_0
+_reserved DMb 0x48000 256
+
+_symbol fft_out_meta_buff_1 0x4C000 256
+_extern fft_out_meta_buff_1
+_reserved DMb 0x4C000 256
+
+_symbol fft_out_buff_0 0x40400 8192
+_extern fft_out_buff_0
+_reserved DMb 0x40400 8192
+
+_symbol fft_out_buff_1 0x44000 8192
+_extern fft_out_buff_1
+_reserved DMb 0x44000 8192
+
+// west -------------------------------------------------
+_reserved DMb 0x50000 0x10000  // Don't allocate variables in west neighbor
+
+_symbol threshold_met_buff_0 0x58000 1024
+_extern threshold_met_buff_0
+_reserved DMb 0x58000 1024
+
+_symbol threshold_met_buff_1 0x5C000 1024
+_extern threshold_met_buff_1
+_reserved DMb 0x5C000 1024
+
+_symbol out_autocorr_0_cons_buff_0 0x50400 8192
+_extern out_autocorr_0_cons_buff_0
+_reserved DMb 0x50400 8192
+
+_symbol out_autocorr_0_cons_buff_1 0x54000 8192
+_extern out_autocorr_0_cons_buff_1
+_reserved DMb 0x54000 8192
+
+// north -------------------------------------------------
+_reserved DMb 0x60000 0x10000  // Don't allocate variables in north neighbor
+
+_symbol frame_equalizer_prepared_0_cons_buff_0 0x64000 8192
+_extern frame_equalizer_prepared_0_cons_buff_0
+_reserved DMb 0x64000 8192
+
+_symbol frame_equalizer_prepared_0_cons_buff_1 0x68000 8192
+_extern frame_equalizer_prepared_0_cons_buff_1
+_reserved DMb 0x68000 8192
+
+_symbol frame_equalizer_meta_buff_0 0x60800 8672
+_extern frame_equalizer_meta_buff_0
+_reserved DMb 0x60800 8672
+
+// east -------------------------------------------------
+_symbol frame_equalizer_prepared_meta_buff_0 0x78000 324
+_extern frame_equalizer_prepared_meta_buff_0
+_reserved DMb 0x78000 324
+
+_symbol frame_equalizer_prepared_meta_buff_1 0x7C000 324
+_extern frame_equalizer_prepared_meta_buff_1
+_reserved DMb 0x7C000 324
+
+_symbol frame_equalizer_prepared_buff_0 0x70A00 8192
+_extern frame_equalizer_prepared_buff_0
+_reserved DMb 0x70A00 8192
+
+_symbol frame_equalizer_prepared_buff_1 0x74000 8192
+_extern frame_equalizer_prepared_buff_1
+_reserved DMb 0x74000 8192
+
+_symbol center_frequency 0x72A00 8
+_extern center_frequency
+_reserved DMb 0x72A00 8
+
+// end mapping neighbors tile memory
+
+_reserved DMb 0x80000 0x80000 // And everything else the core can't see
+_include _file frame_equalizer_preprocess.o
+_resolve _main core_1_4

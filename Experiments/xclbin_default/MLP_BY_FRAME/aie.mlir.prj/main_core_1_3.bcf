@@ -1,0 +1,114 @@
+_entry_point _main_init
+_symbol core_1_3 _after _main_init
+_symbol _main_init 0
+_reserved DMb 0x00000 0x40000 // Don't put data in code memory
+_stack DM_stack 0x70000 0x400 // stack for core
+
+// mapping neighbors tile memory
+// south -------------------------------------------------
+_reserved DMb 0x40000 0x10000  // Don't allocate variables in south neighbor
+
+_symbol sync_short_out_meta_cons_buff_0 0x41D00 64
+_extern sync_short_out_meta_cons_buff_0
+_reserved DMb 0x41D00 64
+
+_symbol sync_short_out_meta_cons_buff_1 0x45500 64
+_extern sync_short_out_meta_cons_buff_1
+_reserved DMb 0x45500 64
+
+_symbol sync_short_out_cons_buff_0 0x40800 5376
+_extern sync_short_out_cons_buff_0
+_reserved DMb 0x40800 5376
+
+_symbol sync_short_out_cons_buff_1 0x44000 5376
+_extern sync_short_out_cons_buff_1
+_reserved DMb 0x44000 5376
+
+_symbol sync_long_out_meta_buff_0 0x49000 64
+_extern sync_long_out_meta_buff_0
+_reserved DMb 0x49000 64
+
+_symbol sync_long_out_meta_buff_1 0x4D000 64
+_extern sync_long_out_meta_buff_1
+_reserved DMb 0x4D000 64
+
+_symbol sync_long_out_buff_0 0x48000 4096
+_extern sync_long_out_buff_0
+_reserved DMb 0x48000 4096
+
+_symbol sync_long_out_buff_1 0x4C000 4096
+_extern sync_long_out_buff_1
+_reserved DMb 0x4C000 4096
+
+// west -------------------------------------------------
+_reserved DMb 0x50000 0x10000  // Don't allocate variables in west neighbor
+
+_symbol out_magsq_delay_buff_0 0x50400 4096
+_extern out_magsq_delay_buff_0
+_reserved DMb 0x50400 4096
+
+_symbol out_magsq_delay_buff_1 0x54000 4096
+_extern out_magsq_delay_buff_1
+_reserved DMb 0x54000 4096
+
+_symbol out_magsq_buff_0 0x58000 4096
+_extern out_magsq_buff_0
+_reserved DMb 0x58000 4096
+
+_symbol out_magsq_buff_1 0x5C000 4096
+_extern out_magsq_buff_1
+_reserved DMb 0x5C000 4096
+
+_symbol in_mem_1_cons_buff_0 0x51400 4096
+_extern in_mem_1_cons_buff_0
+_reserved DMb 0x51400 4096
+
+_symbol in_mem_1_cons_buff_1 0x55000 4096
+_extern in_mem_1_cons_buff_1
+_reserved DMb 0x55000 4096
+
+// north -------------------------------------------------
+_reserved DMb 0x60000 0x10000  // Don't allocate variables in north neighbor
+
+_symbol frame_equalizer_prepared_meta_buff_0 0x68000 324
+_extern frame_equalizer_prepared_meta_buff_0
+_reserved DMb 0x68000 324
+
+_symbol frame_equalizer_prepared_meta_buff_1 0x6C000 324
+_extern frame_equalizer_prepared_meta_buff_1
+_reserved DMb 0x6C000 324
+
+_symbol frame_equalizer_prepared_buff_0 0x60A00 8192
+_extern frame_equalizer_prepared_buff_0
+_reserved DMb 0x60A00 8192
+
+_symbol frame_equalizer_prepared_buff_1 0x64000 8192
+_extern frame_equalizer_prepared_buff_1
+_reserved DMb 0x64000 8192
+
+_symbol center_frequency 0x62A00 8
+_extern center_frequency
+_reserved DMb 0x62A00 8
+
+// east -------------------------------------------------
+_symbol fft_out_meta_buff_0 0x78000 256
+_extern fft_out_meta_buff_0
+_reserved DMb 0x78000 256
+
+_symbol fft_out_meta_buff_1 0x7C000 256
+_extern fft_out_meta_buff_1
+_reserved DMb 0x7C000 256
+
+_symbol fft_out_buff_0 0x70400 8192
+_extern fft_out_buff_0
+_reserved DMb 0x70400 8192
+
+_symbol fft_out_buff_1 0x74000 8192
+_extern fft_out_buff_1
+_reserved DMb 0x74000 8192
+
+// end mapping neighbors tile memory
+
+_reserved DMb 0x80000 0x80000 // And everything else the core can't see
+_include _file fft_cf.o
+_resolve _main core_1_3

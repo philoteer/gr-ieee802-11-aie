@@ -1,0 +1,76 @@
+_entry_point _main_init
+_symbol core_0_3 _after _main_init
+_symbol _main_init 0
+_reserved DMb 0x00000 0x40000 // Don't put data in code memory
+_stack DM_stack 0x70000 0x400 // stack for core
+
+// mapping neighbors tile memory
+// south -------------------------------------------------
+_reserved DMb 0x40000 0x10000  // Don't allocate variables in south neighbor
+
+_symbol out_autocorr_buff_0 0x40400 8192
+_extern out_autocorr_buff_0
+_reserved DMb 0x40400 8192
+
+_symbol out_autocorr_buff_1 0x44000 8192
+_extern out_autocorr_buff_1
+_reserved DMb 0x44000 8192
+
+_symbol in_mem_0_cons_buff_0 0x48000 4096
+_extern in_mem_0_cons_buff_0
+_reserved DMb 0x48000 4096
+
+_symbol in_mem_0_cons_buff_1 0x4C000 4096
+_extern in_mem_0_cons_buff_1
+_reserved DMb 0x4C000 4096
+
+_reserved DMb 0x50000 0x10000  // No tile with memory exists to the west.
+// north -------------------------------------------------
+_reserved DMb 0x60000 0x10000  // Don't allocate variables in north neighbor
+
+_symbol threshold_met_buff_0 0x68000 1024
+_extern threshold_met_buff_0
+_reserved DMb 0x68000 1024
+
+_symbol threshold_met_buff_1 0x6C000 1024
+_extern threshold_met_buff_1
+_reserved DMb 0x6C000 1024
+
+_symbol out_autocorr_0_cons_buff_0 0x60400 8192
+_extern out_autocorr_0_cons_buff_0
+_reserved DMb 0x60400 8192
+
+_symbol out_autocorr_0_cons_buff_1 0x64000 8192
+_extern out_autocorr_0_cons_buff_1
+_reserved DMb 0x64000 8192
+
+// east -------------------------------------------------
+_symbol out_magsq_delay_buff_0 0x70400 4096
+_extern out_magsq_delay_buff_0
+_reserved DMb 0x70400 4096
+
+_symbol out_magsq_delay_buff_1 0x74000 4096
+_extern out_magsq_delay_buff_1
+_reserved DMb 0x74000 4096
+
+_symbol out_magsq_buff_0 0x78000 4096
+_extern out_magsq_buff_0
+_reserved DMb 0x78000 4096
+
+_symbol out_magsq_buff_1 0x7C000 4096
+_extern out_magsq_buff_1
+_reserved DMb 0x7C000 4096
+
+_symbol in_mem_1_cons_buff_0 0x71400 4096
+_extern in_mem_1_cons_buff_0
+_reserved DMb 0x71400 4096
+
+_symbol in_mem_1_cons_buff_1 0x75000 4096
+_extern in_mem_1_cons_buff_1
+_reserved DMb 0x75000 4096
+
+// end mapping neighbors tile memory
+
+_reserved DMb 0x80000 0x80000 // And everything else the core can't see
+_include _file magsq_avg_cf.o
+_resolve _main core_0_3
