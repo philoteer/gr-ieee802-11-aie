@@ -1,146 +1,364 @@
 options:
   parameters:
-    id: npu_intra_kernel
-    title: NPU Intra-Block Latency Profile
-    description: Host-side stage timing inside the locally built NPU PHY block.
     author: ''
-    category: Custom
-    output_language: python
-    generate_options: no_gui
     catch_exceptions: 'True'
-    run: 'True'
-    run_command: bash -c 'exec bash "$(dirname "$2")/run-profile.sh" "$1" -u "$2"' -- {python} {filename}
-    run_options: run
+    category: Custom
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: Host-side stage timing inside the locally built NPU PHY block.
     gen_cmake: 'Off'
-  states: {coordinate: [8, 12], state: enabled}
+    gen_linking: dynamic
+    generate_options: no_gui
+    hier_block_src_path: '.:'
+    id: wifi_rx
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: ''
+    run: 'True'
+    run_command: bash -c 'exec bash "$(dirname "$2")/run-profile.sh" "$1" -u "$2"'
+      -- {python} {filename}
+    run_options: run
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: NPU Intra-Block Latency Profile
+    window_size: (1000,1000)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 12]
+    rotation: 0
+    state: enabled
+
 blocks:
 - name: data_dir
   id: variable
   parameters:
-    value: str(__import__('pathlib').Path(globals().get('__file__', 'Experiments/latency_profile/npu_intra_kernel.py')).resolve().parents[2] / 'AI-model-CNN-Channel-est' / 'data')
-  states: {coordinate: [400, 12], state: enabled}
+    comment: ''
+    value: str(__import__('pathlib').Path(globals().get('__file__', 'Experiments/latency_profile/npu_intra_kernel.py')).resolve().parents[2]
+      / 'AI-model-CNN-Channel-est' / 'data')
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [400, 12]
+    rotation: 0
+    state: enabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/room_20260927.sigmf"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [400, 100]
+    rotation: 0
+    state: enabled
+- name: freq
+  id: variable
+  parameters:
+    comment: ''
+    value: 2.417e9
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [200, 12]
+    rotation: 0
+    state: enabled
 - name: kernel_dir
   id: variable
   parameters:
-    value: str(__import__('pathlib').Path(data_dir).parents[1] / 'Experiments' / 'xclbin_default' / 'LS')
-  states: {coordinate: [800, 12], state: enabled}
-- name: file_path
-  id: variable
-  parameters: {value: 'data_dir + "/raw_capture/room_20260927.sigmf"'}
-  states: {coordinate: [400, 100], state: enabled}
+    comment: ''
+    value: str(__import__('pathlib').Path(data_dir).parents[1] / 'Experiments' / 'xclbin_default'
+      / 'LS')
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [800, 12]
+    rotation: 0
+    state: enabled
 - name: output_dir
   id: variable
   parameters:
-    value: str(__import__('pathlib').Path(__import__('os').environ.get('PROFILE_OUTPUT_DIR', str(__import__('pathlib').Path(globals().get('__file__', 'Experiments/latency_profile/npu_intra_kernel.py')).resolve().parent / 'results'))) / 'intra')
-  states: {coordinate: [800, 100], state: enabled}
-- name: freq
-  id: variable
-  parameters: {value: '2.417e9'}
-  states: {coordinate: [200, 12], state: enabled}
-- name: num_samples
-  id: parameter
+    comment: ''
+    value: str(__import__('pathlib').Path(__import__('os').environ.get('PROFILE_OUTPUT_DIR',
+      str(__import__('pathlib').Path(globals().get('__file__', 'Experiments/latency_profile/npu_intra_kernel.py')).resolve().parent
+      / 'results'))) / 'intra')
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [800, 100]
+    rotation: 0
+    state: enabled
+- name: blocks_file_sink_0
+  id: blocks_file_sink
   parameters:
-    label: Input complex samples (0 = entire file)
-    type: intx
-    default: '0'
-    short_id: 'n'
-    hide: none
-  states: {coordinate: [200, 100], state: enabled}
+    affinity: ''
+    alias: ''
+    append: 'False'
+    comment: ''
+    file: output_dir + '/decoded.pcap'
+    type: byte
+    unbuffered: 'True'
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [240, 440]
+    rotation: 0
+    state: enabled
 - name: blocks_file_source_0
   id: blocks_file_source
   parameters:
+    affinity: ''
+    alias: ''
+    begin_tag: pmt.PMT_NIL
+    comment: ''
     file: file_path + '-data'
+    length: 2 * num_samples
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    offset: '0'
+    repeat: 'False'
     type: short
     vlen: '1'
-    repeat: 'False'
-    offset: '0'
-    length: 2 * num_samples
-    begin_tag: pmt.PMT_NIL
-  states: {coordinate: [8, 240], state: enabled}
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 240]
+    rotation: 0
+    state: enabled
 - name: blocks_interleaved_short_to_complex_0
   id: blocks_interleaved_short_to_complex
-  parameters: {scale_factor: '32768', swap: 'False', vector_input: 'False'}
-  states: {coordinate: [240, 240], state: enabled}
-- name: mlir_aie_sigmf_tag_injector_0
-  id: mlir_aie_sigmf_tag_injector
   parameters:
-    type: complex
-    metadata_file: file_path + '-meta'
-    start_sample: '0'
-    tag_key: rx_freq
-  states: {coordinate: [480, 240], state: enabled}
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    scale_factor: '32768'
+    swap: 'False'
+    vector_input: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [240, 240]
+    rotation: 0
+    state: enabled
+- name: blocks_stream_to_vector_0
+  id: blocks_stream_to_vector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: '48'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [960, 440]
+    rotation: 0
+    state: enabled
+- name: create_output_directory
+  id: snippet
+  parameters:
+    alias: ''
+    code: __import__('pathlib').Path(self.output_dir).mkdir(parents=True, exist_ok=True)
+    comment: ''
+    priority: '0'
+    section: init_before_blocks
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 640]
+    rotation: 0
+    state: enabled
+- name: foo_wireshark_connector_0
+  id: foo_wireshark_connector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    debug: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    tech: '127'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [480, 440]
+    rotation: 0
+    state: enabled
+- name: ieee802_11_decode_mac_0
+  id: ieee802_11_decode_mac
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    debug: 'False'
+    log: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [720, 440]
+    rotation: 0
+    state: enabled
+- name: ieee802_11_parse_mac_0
+  id: ieee802_11_parse_mac
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    debug: 'False'
+    log: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [720, 640]
+    rotation: 0
+    state: enabled
 - name: mlir_aie_complex64_to_cint16_0
   id: mlir_aie_complex64_to_cint16
-  parameters: {safe: 'False'}
-  states: {coordinate: [720, 240], state: enabled}
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    safe: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [720, 240]
+    rotation: 0
+    state: enabled
 - name: mlir_aie_mlir_aie_80211_phy_0
   id: mlir_aie_mlir_aie_80211_phy
   parameters:
     N_TILES: '16'
     VECTOR_SIZE: '16384'
+    affinity: ''
+    alias: ''
+    comment: ''
+    kernel_name: MLIR_AIE
+    maxoutbuf: '0'
+    minoutbuf: '0'
     nominal_frequency: freq
     num_slots: '2'
-    kernel_name: MLIR_AIE
     path_insts_bin: kernel_dir + '/insts.bin'
     path_xclbin: kernel_dir + '/final.xclbin'
-    weights_path: "''"
-  states: {coordinate: [960, 200], state: enabled}
-- name: blocks_stream_to_vector_0
-  id: blocks_stream_to_vector
-  parameters: {type: byte, vlen: '1', num_items: '48'}
-  states: {coordinate: [960, 440], state: enabled}
-- name: ieee802_11_decode_mac_0
-  id: ieee802_11_decode_mac
-  parameters: {debug: 'False', log: 'False'}
-  states: {coordinate: [720, 440], state: enabled}
-- name: foo_wireshark_connector_0
-  id: foo_wireshark_connector
-  parameters: {debug: 'False', tech: '127'}
-  states: {coordinate: [480, 440], state: enabled}
-- name: ieee802_11_parse_mac_0
-  id: ieee802_11_parse_mac
-  parameters: {debug: 'False', log: 'False'}
-  states: {coordinate: [720, 640], state: enabled}
-- name: blocks_file_sink_0
-  id: blocks_file_sink
+    weights_path: ''''''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [960, 200]
+    rotation: 0
+    state: enabled
+- name: mlir_aie_sigmf_tag_injector_0
+  id: mlir_aie_sigmf_tag_injector
   parameters:
-    file: output_dir + '/decoded.pcap'
-    type: byte
-    vlen: '1'
-    append: 'False'
-    unbuffered: 'True'
-  states: {coordinate: [240, 440], state: enabled}
-- name: profile_start
-  id: snippet
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    metadata_file: file_path + '-meta'
+    minoutbuf: '0'
+    start_sample: '0'
+    tag_key: rx_freq
+    type: complex
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [480, 240]
+    rotation: 0
+    state: enabled
+- name: num_samples
+  id: parameter
   parameters:
-    section: main_after_init
-    priority: '0'
-    code: |-
-      import profiler_support
-      self.profile_session = profiler_support.ProfileSession(self, self.output_dir)
-  states: {coordinate: [8, 560], state: enabled}
-- name: create_output_directory
-  id: snippet
-  parameters:
-    section: init_before_blocks
-    priority: '0'
-    code: __import__('pathlib').Path(self.output_dir).mkdir(parents=True, exist_ok=True)
-  states: {coordinate: [8, 640], state: enabled}
+    alias: ''
+    comment: ''
+    hide: none
+    label: Input complex samples (0 = entire file)
+    short_id: n
+    type: intx
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [200, 100]
+    rotation: 0
+    state: enabled
 - name: profile_finish
   id: snippet
   parameters:
-    section: main_after_stop
-    priority: '0'
+    alias: ''
     code: self.profile_session.finish()
-  states: {coordinate: [480, 560], state: enabled}
+    comment: ''
+    priority: '0'
+    section: main_after_stop
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [480, 560]
+    rotation: 0
+    state: enabled
+- name: profile_start
+  id: snippet
+  parameters:
+    alias: ''
+    code: 'import profiler_support
+
+      self.profile_session = profiler_support.ProfileSession(self, self.output_dir)'
+    comment: ''
+    priority: '0'
+    section: main_after_init
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 560]
+    rotation: 0
+    state: enabled
+
 connections:
 - [blocks_file_source_0, '0', blocks_interleaved_short_to_complex_0, '0']
 - [blocks_interleaved_short_to_complex_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
-- [mlir_aie_sigmf_tag_injector_0, '0', mlir_aie_complex64_to_cint16_0, '0']
-- [mlir_aie_complex64_to_cint16_0, '0', mlir_aie_mlir_aie_80211_phy_0, '0']
-- [mlir_aie_mlir_aie_80211_phy_0, '0', blocks_stream_to_vector_0, '0']
 - [blocks_stream_to_vector_0, '0', ieee802_11_decode_mac_0, '0']
+- [foo_wireshark_connector_0, '0', blocks_file_sink_0, '0']
 - [ieee802_11_decode_mac_0, out, foo_wireshark_connector_0, in]
 - [ieee802_11_decode_mac_0, out, ieee802_11_parse_mac_0, in]
-- [foo_wireshark_connector_0, '0', blocks_file_sink_0, '0']
-metadata: {file_format: 1, grc_version: 3.10.9.2}
+- [mlir_aie_complex64_to_cint16_0, '0', mlir_aie_mlir_aie_80211_phy_0, '0']
+- [mlir_aie_mlir_aie_80211_phy_0, '0', blocks_stream_to_vector_0, '0']
+- [mlir_aie_sigmf_tag_injector_0, '0', mlir_aie_complex64_to_cint16_0, '0']
+
+metadata:
+  file_format: 1
+  grc_version: 3.10.9.2
