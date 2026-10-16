@@ -165,7 +165,7 @@ blocks:
     bus_structure: null
     coordinate: [1600, 8.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_probe_rate_0
   id: blocks_probe_rate
   parameters:
@@ -185,7 +185,7 @@ blocks:
     bus_structure: null
     coordinate: [1344, 16.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_stream_to_vector_0
   id: blocks_stream_to_vector
   parameters:
@@ -443,7 +443,7 @@ blocks:
     bus_structure: null
     coordinate: [1168, 32.0]
     rotation: 0
-    state: disabled
+    state: enabled
 
 connections:
 - [blocks_file_source_0, '0', blocks_interleaved_short_to_complex_0, '0']
