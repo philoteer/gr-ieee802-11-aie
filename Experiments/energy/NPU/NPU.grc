@@ -44,7 +44,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [728, 84.0]
+    coordinate: [656, 20.0]
     rotation: 0
     state: enabled
 - name: file_path
@@ -56,7 +56,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [664, 12.0]
+    coordinate: [1136, 388.0]
     rotation: 0
     state: disabled
 - name: file_path
@@ -68,9 +68,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [816, 12.0]
+    coordinate: [1296, 388.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: file_path
   id: variable
   parameters:
@@ -80,9 +80,21 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [984, 12.0]
+    coordinate: [1128, 484.0]
     rotation: 0
     state: disabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/stress_test_awgn_15db.sigmf"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1296, 484.0]
+    rotation: 0
+    state: enabled
 - name: freq
   id: variable
   parameters:
@@ -98,27 +110,37 @@ blocks:
 - name: kernel_dir
   id: variable
   parameters:
-    comment: Build artifacts for the base 16-tile, 16384-sample NPU PHY.
-    value: str(__import__("pathlib").Path(data_dir).parents[1] / "base" / "kernel"
-      / "build")
+    comment: LS
+    value: '"../../xclbin_default/LS/"'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1112, 228.0]
+    coordinate: [1128, 196.0]
     rotation: 0
     state: disabled
 - name: kernel_dir
   id: variable
   parameters:
-    comment: Build artifacts for the base 16-tile, 16384-sample NPU PHY.
-    value: str(__import__("pathlib").Path(data_dir).parents[1] / "AI-model-CNN-Channel-est"
-      / "kernel" / "build")
+    comment: /CNN_BY_CHANNEL/
+    value: '"../../xclbin_default/CNN_BY_CHANNEL/"'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1104, 316.0]
+    coordinate: [1288, 196.0]
+    rotation: 0
+    state: disabled
+- name: kernel_dir
+  id: variable
+  parameters:
+    comment: MLP_BY_CHANNEL/
+    value: '"../../xclbin_default/MLP_BY_CHANNEL/"'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1128, 292.0]
     rotation: 0
     state: enabled
 - name: samp_rate
@@ -130,31 +152,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [296, 16.0]
-    rotation: 0
-    state: enabled
-- name: sync_length
-  id: variable
-  parameters:
-    comment: ''
-    value: '320'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [8, 168.0]
-    rotation: 0
-    state: enabled
-- name: window_size
-  id: variable
-  parameters:
-    comment: ''
-    value: '48'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [8, 96.0]
+    coordinate: [200, 84.0]
     rotation: 0
     state: enabled
 - name: blocks_file_sink_0
@@ -194,7 +192,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1000, 100.0]
+    coordinate: [1176, 12.0]
     rotation: 0
     state: enabled
 - name: blocks_interleaved_short_to_complex_0
@@ -212,44 +210,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1224, 140.0]
+    coordinate: [1400, 52.0]
     rotation: 0
     state: enabled
-- name: blocks_message_debug_0
-  id: blocks_message_debug
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    en_uvec: 'True'
-    log_level: info
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1600, 8.0]
-    rotation: 0
-    state: disabled
-- name: blocks_probe_rate_0
-  id: blocks_probe_rate
-  parameters:
-    affinity: ''
-    alias: ''
-    alpha: '0.15'
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    mintime: '500.0'
-    name: ''
-    type: complex
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1344, 16.0]
-    rotation: 0
-    state: disabled
 - name: blocks_stream_to_vector_0
   id: blocks_stream_to_vector
   parameters:
@@ -280,7 +243,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [384, 20.0]
+    coordinate: [344, 20.0]
     rotation: 0
     state: enabled
 - name: energy_logger_prepare
@@ -717,7 +680,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1408, 140.0]
+    coordinate: [1584, 52.0]
     rotation: 0
     state: enabled
 - name: virtual_sink_0
@@ -730,7 +693,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1640, 164.0]
+    coordinate: [1816, 76.0]
     rotation: 0
     state: enabled
 - name: virtual_source_0
@@ -746,24 +709,10 @@ blocks:
     coordinate: [0, 280.0]
     rotation: 0
     state: enabled
-- name: virtual_source_0_0
-  id: virtual_source
-  parameters:
-    alias: ''
-    comment: ''
-    stream_id: iq
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1168, 32.0]
-    rotation: 0
-    state: disabled
 
 connections:
 - [blocks_file_source_0, '0', blocks_interleaved_short_to_complex_0, '0']
 - [blocks_interleaved_short_to_complex_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
-- [blocks_probe_rate_0, rate, blocks_message_debug_0, print]
 - [blocks_stream_to_vector_0, '0', ieee802_11_decode_mac_0, '0']
 - [epy_block_0_0, '0', blocks_stream_to_vector_0, '0']
 - [foo_wireshark_connector_0, '0', blocks_file_sink_0, '0']
@@ -774,7 +723,6 @@ connections:
 - [mlir_aie_mlir_aie_80211_phy_0, '0', blocks_stream_to_vector_0, '0']
 - [mlir_aie_sigmf_tag_injector_0, '0', virtual_sink_0, '0']
 - [virtual_source_0, '0', mlir_aie_complex64_to_cint16_0, '0']
-- [virtual_source_0_0, '0', blocks_probe_rate_0, '0']
 
 metadata:
   file_format: 1
