@@ -1,0 +1,78 @@
+{
+  "source": "/mnt/SUB/raw_capture/stress_test.sigmf-data",
+  "sampling": {
+    "window_starts": [
+      0,
+      232224254,
+      464448509,
+      696672763,
+      928897018,
+      1161121272,
+      1393345527,
+      1625569781,
+      1857794036,
+      2090018290,
+      2322242545,
+      2554466800
+    ],
+    "window_samples": 2000000
+  },
+  "before": {
+    "detected_lts_pairs": 6244,
+    "snr_db_percentiles": {
+      "p05": 24.836333191714456,
+      "p50": 34.1366895878129,
+      "p95": 39.24147292553663
+    },
+    "gates": {
+      "CPU by_frame CNN": {
+        "ratio_x16": 32000,
+        "threshold_db": 30.0,
+        "bypassed_pairs": 4611,
+        "bypassed_percent": 73.8468930172966
+      },
+      "CPU by_frame MLP": {
+        "ratio_x16": 14294,
+        "threshold_db": 26.500037994452423,
+        "bypassed_pairs": 5519,
+        "bypassed_percent": 88.38885329916721
+      },
+      "AIE by_frame CNN": {
+        "ratio_x16": 40286,
+        "threshold_db": 31.00004170076985,
+        "bypassed_pairs": 4401,
+        "bypassed_percent": 70.48366431774504
+      },
+      "AIE by_frame MLP": {
+        "ratio_x16": 12739,
+        "threshold_db": 25.999853592926662,
+        "bypassed_pairs": 5634,
+        "bypassed_percent": 90.23062139654068
+      },
+      "CPU by_channel CNN": {
+        "ratio_x16": 18446744073709551615,
+        "threshold_db": 177.6076974417489,
+        "bypassed_pairs": 0,
+        "bypassed_percent": 0.0
+      },
+      "CPU by_channel MLP": {
+        "ratio_x16": 40286,
+        "threshold_db": 31.00004170076985,
+        "bypassed_pairs": 4401,
+        "bypassed_percent": 70.48366431774504
+      },
+      "AIE by_channel CNN": {
+        "ratio_x16": 40286,
+        "threshold_db": 31.00004170076985,
+        "bypassed_pairs": 4401,
+        "bypassed_percent": 70.48366431774504
+      },
+      "AIE by_channel MLP": {
+        "ratio_x16": 40286,
+        "threshold_db": 31.00004170076985,
+        "bypassed_pairs": 4401,
+        "bypassed_percent": 70.48366431774504
+      }
+    }
+  }
+}
