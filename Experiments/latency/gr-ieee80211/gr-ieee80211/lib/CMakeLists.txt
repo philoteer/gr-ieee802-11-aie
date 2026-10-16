@@ -18,6 +18,7 @@ list(APPEND ieee80211_sources
     modulation_impl.cc
     demod_impl.cc
     decode_impl.cc
+    latency_tag_monitor.cc
     encode_impl.cc
     cloud80211phy.cc
     signal2_impl.cc

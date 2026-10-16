@@ -34,6 +34,7 @@ list(APPEND ieee80211_python_files
     modulation_python.cc
     demod_python.cc
     decode_python.cc
+    latency_tag_monitor_python.cc
     encode_python.cc
     signal2_python.cc
     demod2_python.cc

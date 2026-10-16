@@ -17,6 +17,7 @@ install(FILES
     modulation.h
     demod.h
     decode.h
+    latency_tag_monitor.h
     encode.h
     signal2.h
     demod2.h

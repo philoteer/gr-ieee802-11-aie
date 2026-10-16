@@ -56,6 +56,7 @@ namespace gr {
       int t_nUnCoded;
       int t_nTotal;
       int t_nProcd;
+      pmt::pmt_t d_equalized_ns = pmt::PMT_NIL;
       int t_mcs;
       float t_cfo;
       float t_snr;

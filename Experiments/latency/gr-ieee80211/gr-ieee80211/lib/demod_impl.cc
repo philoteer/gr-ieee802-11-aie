@@ -20,6 +20,9 @@
 
 #include <gnuradio/io_signature.h>
 #include "demod_impl.h"
+#include <cerrno>
+#include <system_error>
+#include <time.h>
 
 namespace gr {
   namespace ieee80211 {
@@ -300,6 +303,16 @@ namespace gr {
             o2 += d_m.nCBPS;
             if(d_nSymProcd >= d_m.nSym)
             {
+              // End of equalization/soft demapping, before the separate Viterbi
+              // decoder. Tag the start of the final symbol's LLRs: the decoder
+              // may finish before consuming that symbol's padding bits.
+              timespec completed;
+              if (clock_gettime(CLOCK_MONOTONIC, &completed) != 0)
+                throw std::system_error(errno, std::generic_category(), "clock_gettime");
+              const uint64_t ns = static_cast<uint64_t>(completed.tv_sec) *
+                                    1000000000ULL + completed.tv_nsec;
+              add_item_tag(0, nitems_written(0) + o2 - d_m.nCBPS,
+                           pmt::intern("phy_equalized_ns"), pmt::from_uint64(ns), alias_pmt());
               d_sDemod = DEMOD_S_CLEAN;
               break;
             }

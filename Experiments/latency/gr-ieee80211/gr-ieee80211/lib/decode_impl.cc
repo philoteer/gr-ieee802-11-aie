@@ -71,6 +71,7 @@ namespace gr {
         if(tags.size())
         {
           pmt::pmt_t d_meta = pmt::make_dict();
+          d_equalized_ns = pmt::PMT_NIL;
           for (auto tag : tags){
             d_meta = pmt::dict_add(d_meta, tag.key, tag.value);
           }
@@ -128,6 +129,12 @@ namespace gr {
       else if(d_sDecode == DECODE_S_DECODE)
       {
         int tmpProcd = vstb_update(inSig, d_nProc);
+        // Carry the final-symbol timestamp through decoding unchanged. Look
+        // only in LLRs consumed for this packet, never in a following packet.
+        get_tags_in_range(tags, 0, nitems_read(0), nitems_read(0) + tmpProcd,
+                          pmt::intern("phy_equalized_ns"));
+        for (const auto& tag : tags)
+          d_equalized_ns = tag.value;
         if(v_t >= v_trellis)
         {
           d_sDecode = DECODE_S_CLEAN;
@@ -416,6 +423,8 @@ namespace gr {
               pmt::pmt_t tmpMeta = pmt::make_dict();
               tmpMeta = pmt::dict_add(tmpMeta, pmt::mp("len"), pmt::from_long(tmpLen));
               pmt::pmt_t tmpPayload = pmt::make_blob(d_pktBytes, tmpLen);
+              if (pmt::is_uint64(d_equalized_ns))
+                tmpMeta = pmt::dict_add(tmpMeta, pmt::intern("phy_equalized_ns"), d_equalized_ns);
               message_port_pub(pmt::mp("out"), pmt::cons(tmpMeta, tmpPayload));
             }
 
@@ -513,6 +522,8 @@ namespace gr {
             pmt::pmt_t tmpMeta = pmt::make_dict();
             tmpMeta = pmt::dict_add(tmpMeta, pmt::mp("len"), pmt::from_long(t_len+4));
             pmt::pmt_t tmpPayload = pmt::make_blob(d_pktBytes, t_len+4);
+            if (pmt::is_uint64(d_equalized_ns))
+              tmpMeta = pmt::dict_add(tmpMeta, pmt::intern("phy_equalized_ns"), d_equalized_ns);
             message_port_pub(pmt::mp("out"), pmt::cons(tmpMeta, tmpPayload));
           }
         }

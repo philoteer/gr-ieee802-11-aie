@@ -1,0 +1,17 @@
+id: ieee80211_latency_tag_monitor
+label: Latency Tag Monitor
+category: '[ieee80211]'
+templates:
+  imports: from gnuradio import ieee80211
+  make: ieee80211.latency_tag_monitor()
+inputs:
+- domain: stream
+  dtype: complex
+outputs:
+- domain: message
+  id: events
+  optional: true
+documentation: |-
+  Native IQ side tap forwarding frame_start/frame_end dictionaries on events.
+  Preserves the source's monotonic timestamp_ns instead of timing delivery.
+file_format: 1
