@@ -19,7 +19,7 @@ options:
     realtime_scheduling: ''
     run: 'True'
     run_command: '{python} -u {filename}'
-    run_options: run
+    run_options: prompt
     sizing_mode: fixed
     thread_safe_setters: ''
     title: ''
@@ -287,8 +287,8 @@ blocks:
 - name: mlir_aie_mlir_aie_80211_phy_0
   id: mlir_aie_mlir_aie_80211_phy
   parameters:
-    N_TILES: '16'
-    VECTOR_SIZE: '16384'
+    N_TILES: '8'
+    VECTOR_SIZE: '8192'
     affinity: ''
     alias: ''
     comment: ''
@@ -297,8 +297,8 @@ blocks:
     minoutbuf: '0'
     nominal_frequency: freq
     num_slots: '2'
-    path_insts_bin: '"../../../base/kernel/build/insts.bin"'
-    path_xclbin: '"../../../base/kernel/build/final.xclbin"'
+    path_insts_bin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/Experiments/latency/NPU/LS_TILE_1024_BATCH_8/insts.bin
+    path_xclbin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/Experiments/latency/NPU/LS_TILE_1024_BATCH_8/final.xclbin
     weights_path: ''''''
   states:
     bus_sink: false
