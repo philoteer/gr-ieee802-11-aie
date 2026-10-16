@@ -224,6 +224,29 @@ blocks:
     coordinate: [392, 116.0]
     rotation: 0
     state: enabled
+- name: mlir_aie_mlir_aie_80211_phy_0_0
+  id: mlir_aie_mlir_aie_80211_phy
+  parameters:
+    N_TILES: '16'
+    VECTOR_SIZE: '16384'
+    affinity: ''
+    alias: ''
+    comment: ''
+    kernel_name: MLIR_AIE
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nominal_frequency: freq
+    num_slots: '2'
+    path_insts_bin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/Experiments/latency_profile/null_kernel/build/insts.bin
+    path_xclbin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/Experiments/latency_profile/null_kernel/build/final.xclbin
+    weights_path: ''''''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [392, 300.0]
+    rotation: 0
+    state: disabled
 - name: mlir_aie_sigmf_tag_injector_0
   id: mlir_aie_sigmf_tag_injector
   parameters:
@@ -288,7 +311,9 @@ connections:
 - [blocks_interleaved_short_to_complex_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
 - [blocks_probe_rate_0, rate, blocks_message_debug_0, print]
 - [mlir_aie_complex64_to_cint16_0, '0', mlir_aie_mlir_aie_80211_phy_0, '0']
+- [mlir_aie_complex64_to_cint16_0, '0', mlir_aie_mlir_aie_80211_phy_0_0, '0']
 - [mlir_aie_mlir_aie_80211_phy_0, '0', blocks_null_sink_0, '0']
+- [mlir_aie_mlir_aie_80211_phy_0_0, '0', blocks_null_sink_0, '0']
 - [mlir_aie_sigmf_tag_injector_0, '0', virtual_sink_0, '0']
 - [virtual_source_0, '0', mlir_aie_complex64_to_cint16_0, '0']
 - [virtual_source_0_0, '0', blocks_probe_rate_0, '0']

@@ -84,6 +84,18 @@ blocks:
     coordinate: [800, 12]
     rotation: 0
     state: enabled
+- name: kernel_dir
+  id: variable
+  parameters:
+    comment: ''
+    value: '"./null_kernel/build"'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [608, 68.0]
+    rotation: 0
+    state: disabled
 - name: output_dir
   id: variable
   parameters:
@@ -95,7 +107,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [800, 100]
+    coordinate: [600, 4.0]
     rotation: 0
     state: enabled
 - name: blocks_file_sink_0
@@ -115,7 +127,7 @@ blocks:
     bus_structure: null
     coordinate: [240, 440]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: blocks_file_source_0
   id: blocks_file_source
   parameters:
@@ -156,6 +168,75 @@ blocks:
     coordinate: [240, 240]
     rotation: 0
     state: enabled
+- name: blocks_message_debug_0
+  id: blocks_message_debug
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    en_uvec: 'True'
+    log_level: info
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1392, 64.0]
+    rotation: 0
+    state: enabled
+- name: blocks_null_sink_0
+  id: blocks_null_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    bus_structure_sink: '[[0,],]'
+    comment: ''
+    num_inputs: '1'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1376, 296.0]
+    rotation: 0
+    state: enabled
+- name: blocks_null_sink_0_0
+  id: blocks_null_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    bus_structure_sink: '[[0,],]'
+    comment: ''
+    num_inputs: '1'
+    type: int
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [888, 336.0]
+    rotation: 0
+    state: disabled
+- name: blocks_probe_rate_0
+  id: blocks_probe_rate
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha: '0.15'
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    mintime: '500.0'
+    name: ''
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1064, 44.0]
+    rotation: 0
+    state: enabled
 - name: blocks_stream_to_vector_0
   id: blocks_stream_to_vector
   parameters:
@@ -173,7 +254,7 @@ blocks:
     bus_structure: null
     coordinate: [960, 440]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: create_output_directory
   id: snippet
   parameters:
@@ -205,7 +286,7 @@ blocks:
     bus_structure: null
     coordinate: [480, 440]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: ieee802_11_decode_mac_0
   id: ieee802_11_decode_mac
   parameters:
@@ -222,7 +303,7 @@ blocks:
     bus_structure: null
     coordinate: [720, 440]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: ieee802_11_parse_mac_0
   id: ieee802_11_parse_mac
   parameters:
@@ -239,7 +320,7 @@ blocks:
     bus_structure: null
     coordinate: [720, 640]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: mlir_aie_complex64_to_cint16_0
   id: mlir_aie_complex64_to_cint16
   parameters:
@@ -276,7 +357,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [960, 200]
+    coordinate: [1008, 212.0]
     rotation: 0
     state: enabled
 - name: mlir_aie_sigmf_tag_injector_0
@@ -350,12 +431,16 @@ blocks:
 
 connections:
 - [blocks_file_source_0, '0', blocks_interleaved_short_to_complex_0, '0']
+- [blocks_interleaved_short_to_complex_0, '0', blocks_probe_rate_0, '0']
 - [blocks_interleaved_short_to_complex_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
+- [blocks_probe_rate_0, rate, blocks_message_debug_0, log]
 - [blocks_stream_to_vector_0, '0', ieee802_11_decode_mac_0, '0']
 - [foo_wireshark_connector_0, '0', blocks_file_sink_0, '0']
 - [ieee802_11_decode_mac_0, out, foo_wireshark_connector_0, in]
 - [ieee802_11_decode_mac_0, out, ieee802_11_parse_mac_0, in]
+- [mlir_aie_complex64_to_cint16_0, '0', blocks_null_sink_0_0, '0']
 - [mlir_aie_complex64_to_cint16_0, '0', mlir_aie_mlir_aie_80211_phy_0, '0']
+- [mlir_aie_mlir_aie_80211_phy_0, '0', blocks_null_sink_0, '0']
 - [mlir_aie_mlir_aie_80211_phy_0, '0', blocks_stream_to_vector_0, '0']
 - [mlir_aie_sigmf_tag_injector_0, '0', mlir_aie_complex64_to_cint16_0, '0']
 
