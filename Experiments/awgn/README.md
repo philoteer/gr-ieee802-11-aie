@@ -48,8 +48,42 @@ copy's full before/after report is saved alongside its data.
 
 ## Usage
 
-Requires Python 3, NumPy, GNU Radio, and the installed `ieee802_11` module.
-Run from the repository root:
+The tools are split into:
+
+- `analyze_capture.py`: measures SNR/gate statistics and calculates a noise
+  budget for the requested target SNR. Requires NumPy, GNU Radio, and the
+  installed `ieee802_11` module. It does not modify IQ data.
+- `add_awgn.py`: creates the noisy SigMF copy using an analyzer report or an
+  explicit noise power. Requires only NumPy and does not run synchronization
+  or analysis.
+- `stress_test_awgn.py`: optional master script that calls both tools and
+  analyzes the result, retaining the original command-line usage.
+
+Run the standalone tools from the repository root:
+
+```bash
+# Analyze and save the calibration for a 20 dB target.
+python3 Experiments/awgn/analyze_capture.py --snr-db 20 \
+  --report Experiments/awgn/data/stress_test_analysis_20db.json
+
+# Inject noise using that report (the report identifies the source capture).
+python3 Experiments/awgn/add_awgn.py \
+  --analysis-report Experiments/awgn/data/stress_test_analysis_20db.json \
+  --output Experiments/awgn/data/stress_test_awgn_20db.sigmf-data
+
+# Analyze the resulting copy separately.
+python3 Experiments/awgn/analyze_capture.py \
+  --source Experiments/awgn/data/stress_test_awgn_20db.sigmf-data
+```
+
+Alternatively, `add_awgn.py --noise-power VALUE --source INPUT --output OUTPUT`
+accepts the complex time-domain noise power `E[|noise|²]` in int16 IQ units;
+each of I and Q receives half this variance. This mode requires no calibration
+report. The analyzer report's `calibration` field records the target and the
+required added noise power; a nonpositive budget means that AWGN cannot reach
+that target by lowering SNR and will be rejected by the adder.
+
+The original master-script usage is also supported:
 
 ```bash
 # Inspect the original without creating IQ data.
