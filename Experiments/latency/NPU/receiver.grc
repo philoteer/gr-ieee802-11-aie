@@ -44,6 +44,18 @@ blocks:
     bus_structure: null
     coordinate: [728, 12.0]
     rotation: 0
+    state: disabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: '"../wifi_latency_mlp_active.sigmf"'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [568, 12.0]
+    rotation: 0
     state: enabled
 - name: freq
   id: variable
@@ -287,8 +299,8 @@ blocks:
 - name: mlir_aie_mlir_aie_80211_phy_0
   id: mlir_aie_mlir_aie_80211_phy
   parameters:
-    N_TILES: '8'
-    VECTOR_SIZE: '8192'
+    N_TILES: '16'
+    VECTOR_SIZE: '16384'
     affinity: ''
     alias: ''
     comment: ''
@@ -297,8 +309,8 @@ blocks:
     minoutbuf: '0'
     nominal_frequency: freq
     num_slots: '2'
-    path_insts_bin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/Experiments/latency/NPU/LS_TILE_1024_BATCH_8/insts.bin
-    path_xclbin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/Experiments/latency/NPU/LS_TILE_1024_BATCH_8/final.xclbin
+    path_insts_bin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/Experiments/xclbin_default/CNN_BY_CHANNEL/insts.bin
+    path_xclbin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/Experiments/xclbin_default/CNN_BY_CHANNEL/final.xclbin
     weights_path: ''''''
   states:
     bus_sink: false
