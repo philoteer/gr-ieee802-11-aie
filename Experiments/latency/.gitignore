@@ -1,5 +1,8 @@
 /wifi_latency.sigmf-data
 /wifi_latency.sigmf-meta
+/wifi_latency_mlp_active.sigmf-data
+/wifi_latency_mlp_active.sigmf-meta
+/wifi_latency*_gate.json
 /wifi_tx_sigmf.py
 /wifi_rx_compat.py
 /compat_report.json

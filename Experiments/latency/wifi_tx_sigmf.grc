@@ -124,9 +124,14 @@ blocks:
     rotation: 0
     state: enabled
 - name: noise_std
-  id: variable
+  id: parameter
   parameters:
-    comment: ''
+    alias: ''
+    comment: Gaussian standard deviation per I/Q; increase to exercise the MLP path.
+    hide: none
+    label: Noise standard deviation
+    short_id: ''
+    type: eng_float
     value: '0.003'
   states:
     bus_sink: false
@@ -136,9 +141,14 @@ blocks:
     rotation: 0
     state: enabled
 - name: output_base
-  id: variable
+  id: parameter
   parameters:
-    comment: ''
+    alias: ''
+    comment: SigMF basename; use a separate name to preserve the original capture.
+    hide: none
+    label: Output basename
+    short_id: ''
+    type: str
     value: '"wifi_latency"'
   states:
     bus_sink: false
