@@ -9,6 +9,7 @@ __pycache__/
 # GNU Radio generated Python flow graphs (generated from *.grc)
 wifi_rx.py
 sync_long_test.py
+sync_short_dump.py
 sync_long_results_viewer.py
 sync_short_results_viewer.py
 frame_equalizer_test.py
