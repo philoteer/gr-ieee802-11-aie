@@ -34,6 +34,34 @@ options:
     state: enabled
 
 blocks:
+- name: dataset
+  id: parameter
+  parameters:
+    comment: Optional SigMF prefix override, without the -data or -meta suffix.
+    hide: none
+    label: Dataset
+    short_id: ''
+    type: str
+    value: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1136, 16.0]
+    rotation: 0
+    state: enabled
+- name: input_path
+  id: variable
+  parameters:
+    comment: Use the command-line dataset when supplied, otherwise the enabled file_path.
+    value: dataset or file_path
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1136, 80.0]
+    rotation: 0
+    state: enabled
 - name: chan_est
   id: variable
   parameters:
@@ -223,12 +251,12 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: file_path+"-data"
+    file: input_path+"-data"
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
     offset: '0'
-    repeat: 'True'
+    repeat: 'False'
     type: short
     vlen: '1'
   states:
@@ -351,7 +379,7 @@ blocks:
     alias: ''
     comment: ''
     maxoutbuf: '0'
-    metadata_file: file_path+"-meta"
+    metadata_file: input_path+"-meta"
     minoutbuf: '0'
     start_sample: '0'
     tag_key: rx_freq
