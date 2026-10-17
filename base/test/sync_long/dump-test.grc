@@ -120,8 +120,8 @@ blocks:
     alias: ''
     comment: ''
     detached: 'True'
-    file: /home/piloteer/xdna_phy/gr-ieeae802-11-aie/base/test/sync_long/tmp_data/tmp.cfdata
-    hdr_file: /home/piloteer/xdna_phy/gr-ieee802-11-aie/base/test/sync_long/tmp_data/tmp.cfdata.hdr
+    file: tmp_data/tmp.iqdata
+    hdr_file: tmp_data/tmp.iqdata.hdr
     maxoutbuf: '0'
     minoutbuf: '0'
     repeat: 'False'
