@@ -18,7 +18,8 @@ options:
     qt_qss_theme: ''
     realtime_scheduling: ''
     run: 'True'
-    run_command: '{python} -u {filename}'
+    run_command: bash -c 'export LD_LIBRARY_PATH="$(dirname "$2")/../../../../gr-foo-fixed/build/lib${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}";
+      exec "$1" -u "$2"' -- {python} {filename}
     run_options: run
     sizing_mode: fixed
     thread_safe_setters: ''
@@ -33,6 +34,37 @@ options:
     state: enabled
 
 blocks:
+- name: dump_path
+  id: parameter
+  parameters:
+    comment: Packed cint16 dump from dump.grc, with a detached .hdr tag file.
+    hide: none
+    label: Dump path
+    short_id: ''
+    type: str
+    value: ''
+  states:
+    coordinate: [360, 20.0]
+    rotation: 0
+    state: enabled
+- name: dump_file
+  id: variable
+  parameters:
+    comment: One int32 item represents one complex-int16 IQ sample.
+    value: dump_path or str(__import__("pathlib").Path(globals().get("__file__", "base/test/sync_long/sync_long_test.py")).resolve().parent / "tmp_data" / "sync_short.iqdata")
+  states:
+    coordinate: [520, 20.0]
+    rotation: 0
+    state: enabled
+- name: kernel_dir
+  id: variable
+  parameters:
+    comment: Standalone sync-long kernel built by the local Makefile.
+    value: str(__import__("pathlib").Path(globals().get("__file__", "base/test/sync_long/sync_long_test.py")).resolve().parent / "build")
+  states:
+    coordinate: [720, 20.0]
+    rotation: 0
+    state: enabled
 - name: vector_size
   id: variable
   parameters:
@@ -52,12 +84,12 @@ blocks:
     alias: ''
     comment: ''
     detached: 'True'
-    file: /home/piloteer/xdna_phy/test_data/sync_short_out_full.iqdata
-    hdr_file: /home/piloteer/xdna_phy/test_data/sync_short_out_full.iqdata.hdr
+    file: dump_file
+    hdr_file: dump_file + ".hdr"
     maxoutbuf: '0'
     minoutbuf: '0'
     repeat: 'False'
-    type: complex
+    type: int
     vlen: '1'
   states:
     bus_sink: false
@@ -109,7 +141,7 @@ blocks:
     minoutbuf: '0'
     mintime: '500.0'
     name: ''
-    type: complex
+    type: int
     vlen: '1'
   states:
     bus_sink: false
@@ -128,7 +160,7 @@ blocks:
     minoutbuf: '0'
     propagate_tags: 'True'
     single_key: '"wifi_start"'
-    type: complex
+    type: int
     vlen: '1'
   states:
     bus_sink: false
@@ -243,7 +275,7 @@ blocks:
     bus_structure: null
     coordinate: [608, 304.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: mlir_aie_mlir_aie_cpp_sync_long_test_0
   id: mlir_aie_mlir_aie_cpp_sync_long_test
   parameters:
@@ -256,8 +288,8 @@ blocks:
     maxoutbuf: '0'
     minoutbuf: '0'
     num_slots: '1'
-    path_insts_bin: build/insts.bin
-    path_xclbin: build/final.xclbin
+    path_insts_bin: kernel_dir + "/insts.bin"
+    path_xclbin: kernel_dir + "/final.xclbin"
   states:
     bus_sink: false
     bus_source: false
@@ -269,7 +301,8 @@ blocks:
 connections:
 - [blocks_file_meta_source_0, '0', blocks_probe_rate_0, '0']
 - [blocks_file_meta_source_0, '0', blocks_tag_gate_0, '0']
-- [blocks_probe_rate_0, rate, blocks_message_debug_0, log]
+- [blocks_probe_rate_0, rate, blocks_message_debug_0, print]
+- [blocks_tag_gate_0, '0', mlir_aie_mlir_aie_cpp_sync_long_test_0, '0']
 - [blocks_tag_gate_0, '0', mlir_aie_complex64_to_cint16_0, '0']
 - [mlir_aie_complex64_to_cint16_0, '0', epy_block_0, '0']
 - [mlir_aie_complex64_to_cint16_0, '0', mlir_aie_mlir_aie_cpp_sync_long_test_0, '0']

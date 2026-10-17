@@ -11,7 +11,7 @@ options:
     gen_linking: dynamic
     generate_options: no_gui
     hier_block_src_path: '.:'
-    id: wifi_rx
+    id: sync_short_dump
     max_nouts: '0'
     output_language: python
     placement: (0,0)
@@ -34,6 +34,28 @@ options:
     state: enabled
 
 blocks:
+- name: dump_path
+  id: parameter
+  parameters:
+    comment: Destination for packed cint16 samples and a detached .hdr tag file.
+    hide: none
+    label: Dump path
+    short_id: ''
+    type: str
+    value: ''
+  states:
+    coordinate: [1136, 80.0]
+    rotation: 0
+    state: enabled
+- name: dump_file
+  id: variable
+  parameters:
+    comment: One int32 item stores one complex-int16 IQ sample, without float conversion.
+    value: dump_path or str(__import__("pathlib").Path(globals().get("__file__", "base/test/sync_long/sync_short_dump.py")).resolve().parent / "tmp_data" / "sync_short.iqdata")
+  states:
+    coordinate: [1136, 144.0]
+    rotation: 0
+    state: enabled
 - name: chan_est
   id: variable
   parameters:
@@ -49,8 +71,8 @@ blocks:
 - name: data_dir
   id: variable
   parameters:
-    comment: Dataset paths are relative to the generated script in base/test/until_sync_short_speedtest.
-    value: str(__import__("pathlib").Path(globals().get("__file__", "base/test/until_sync_short_speedtest/wifi_rx.py")).resolve().parents[3]
+    comment: Dataset paths are relative to the generated script in base/test/sync_long.
+    value: str(__import__("pathlib").Path(globals().get("__file__", "base/test/sync_long/sync_short_dump.py")).resolve().parents[3]
       / "AI-model-CNN-Channel-est" / "data")
   states:
     bus_sink: false
@@ -99,7 +121,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: data_dir + "/raw_capture/stress_test.sigmf"
+    value: data_dir + "/raw_capture/stress_test_awgn_15db.sigmf"
   states:
     bus_sink: false
     bus_source: false
@@ -170,9 +192,9 @@ blocks:
 - name: kernel_dir
   id: variable
   parameters:
-    comment: Pipeline kernel built by the local Makefile.
-    value: str(__import__("pathlib").Path(globals().get("__file__", "base/test/until_sync_short_speedtest/wifi_rx.py")).resolve().parent
-      / "build")
+    comment: Sync-short pipeline with a pass-through placeholder for sync-long.
+    value: str(__import__("pathlib").Path(globals().get("__file__", "base/test/sync_long/sync_short_dump.py")).resolve().parent.parent
+      / "until_sync_short_speedtest" / "build")
   states:
     bus_sink: false
     bus_source: false
@@ -236,11 +258,11 @@ blocks:
     comment: ''
     detached: 'True'
     extra_dict: pmt.make_dict()
-    file: /home/piloteer/xdna_phy/gr-ieee802-11-aie/base/test/sync_long/tmp_data/tmp.iqdata
+    file: dump_file
     max_seg_size: '1000000'
     rel_rate: '1'
     samp_rate: samp_rate
-    type: complex
+    type: int
     unbuffered: 'True'
     vlen: '1'
   states:
@@ -432,7 +454,7 @@ blocks:
     bus_structure: null
     coordinate: [632, 392.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: mlir_aie_complex64_to_cint16_0
   id: mlir_aie_complex64_to_cint16
   parameters:
@@ -461,8 +483,8 @@ blocks:
     maxoutbuf: '0'
     minoutbuf: '0'
     num_slots: '2'
-    path_insts_bin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/base/test/until_sync_short_speedtest/build/insts.bin
-    path_xclbin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/base/test/until_sync_short_speedtest/build/final.xclbin
+    path_insts_bin: kernel_dir + "/insts.bin"
+    path_xclbin: kernel_dir + "/final.xclbin"
   states:
     bus_sink: false
     bus_source: false
@@ -897,6 +919,7 @@ connections:
   '0']
 - [mlir_aie_mlir_aie_cpp_tagged_int32_to_int32_0, '0', mlir_aie_cint16_to_complex64_0,
   '0']
+- [mlir_aie_mlir_aie_cpp_tagged_int32_to_int32_0, '0', blocks_file_meta_sink_0, '0']
 - [mlir_aie_sigmf_tag_injector_0, '0', virtual_sink_0, '0']
 - [osmosdr_source_0, '0', virtual_sink_0, '0']
 - [virtual_source_0, '0', mlir_aie_complex64_to_cint16_0, '0']
