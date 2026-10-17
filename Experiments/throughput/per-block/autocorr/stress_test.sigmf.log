@@ -1,0 +1,186 @@
+Dataset: /home/piloteer/xdna_phy/gr-ieee802-11-aie/AI-model-CNN-Channel-est/data/raw_capture/stress_test.sigmf
+Run until EOF
+Sequence instr count: 75
+Loading xclbin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/base/test/autocorr_cf/build/final.xclbin
+Kernel opcode: MLIR_AIE
+Name: MLIR_AIE
+Registering xclbin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/base/test/autocorr_cf/build/final.xclbin
+Getting hardware context.
+Getting handle to kernel:MLIR_AIE
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.77252e+07) (rate_now . 8.77252e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.74106e+07) (rate_now . 8.56274e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.74502e+07) (rate_now . 8.76745e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.75163e+07) (rate_now . 8.78912e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.75453e+07) (rate_now . 8.77096e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.72698e+07) (rate_now . 8.57087e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.69476e+07) (rate_now . 8.51217e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.647e+07) (rate_now . 8.37635e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.59491e+07) (rate_now . 8.29974e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.52623e+07) (rate_now . 8.13701e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.5015e+07) (rate_now . 8.36139e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.52006e+07) (rate_now . 8.62525e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.52801e+07) (rate_now . 8.57303e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.53618e+07) (rate_now . 8.58248e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.52435e+07) (rate_now . 8.4573e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.54292e+07) (rate_now . 8.64818e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.55681e+07) (rate_now . 8.63554e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.55269e+07) (rate_now . 8.52931e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.54282e+07) (rate_now . 8.48686e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.55681e+07) (rate_now . 8.63611e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.56165e+07) (rate_now . 8.58908e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.56825e+07) (rate_now . 8.60564e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.5548e+07) (rate_now . 8.47857e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.56363e+07) (rate_now . 8.6137e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.57334e+07) (rate_now . 8.62837e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.58211e+07) (rate_now . 8.63178e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.58387e+07) (rate_now . 8.59386e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.56165e+07) (rate_now . 8.43573e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.56448e+07) (rate_now . 8.58051e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.58853e+07) (rate_now . 8.72478e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.60695e+07) (rate_now . 8.71135e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.58439e+07) (rate_now . 8.45653e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.59333e+07) (rate_now . 8.64399e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.58503e+07) (rate_now . 8.53802e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.59499e+07) (rate_now . 8.65144e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.57386e+07) (rate_now . 8.45413e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.55868e+07) (rate_now . 8.47264e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.55964e+07) (rate_now . 8.56508e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.57382e+07) (rate_now . 8.65415e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.55077e+07) (rate_now . 8.42015e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.55456e+07) (rate_now . 8.57608e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.53826e+07) (rate_now . 8.44589e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.50818e+07) (rate_now . 8.33772e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.57341e+07) (rate_now . 8.94303e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.67766e+07) (rate_now . 9.26841e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.77713e+07) (rate_now . 9.34083e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.82809e+07) (rate_now . 9.11687e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.83177e+07) (rate_now . 8.85258e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.87171e+07) (rate_now . 9.09804e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.90158e+07) (rate_now . 9.07083e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.86726e+07) (rate_now . 8.6728e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.85547e+07) (rate_now . 8.78869e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.78905e+07) (rate_now . 8.41265e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.75617e+07) (rate_now . 8.56986e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.72104e+07) (rate_now . 8.52195e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.70017e+07) (rate_now . 8.5819e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.66758e+07) (rate_now . 8.4829e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.63346e+07) (rate_now . 8.44012e+07))
+************************************
+******* MESSAGE DEBUG PRINT ********
+((rate_avg . 8.58346e+07) (rate_now . 8.30017e+07))
+************************************
