@@ -1,0 +1,501 @@
+options:
+  parameters:
+    author: ''
+    catch_exceptions: 'True'
+    category: Custom
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: ''
+    gen_cmake: 'On'
+    gen_linking: dynamic
+    generate_options: no_gui
+    hier_block_src_path: '.:'
+    id: wifi_rx
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: ''
+    run: 'True'
+    run_command: bash -c 'export LD_LIBRARY_PATH="$(dirname "$2")/../../../../gr-foo-fixed/build/lib${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}";
+      exec "$1" -u "$2"' -- {python} {filename}
+    run_options: run
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: ''
+    window_size: (1000,1000)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 12.0]
+    rotation: 0
+    state: enabled
+
+blocks:
+- name: chan_est
+  id: variable
+  parameters:
+    comment: ''
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [208, 20.0]
+    rotation: 0
+    state: enabled
+- name: data_dir
+  id: variable
+  parameters:
+    comment: Dataset paths are relative to the generated script in base/test/until_sync_short_speedtest.
+    value: str(__import__("pathlib").Path(globals().get("__file__", "base/test/until_sync_short_speedtest/wifi_rx.py")).resolve().parents[3]
+      / "AI-model-CNN-Channel-est" / "data")
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [960, 16.0]
+    rotation: 0
+    state: enabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/stress_test.sigmf"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [960, 208.0]
+    rotation: 0
+    state: disabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/room_20260927.sigmf"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1192, 260.0]
+    rotation: 0
+    state: enabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/206.sigmf"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [768, 108.0]
+    rotation: 0
+    state: disabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/stress_test_awgn_15db.sigmf"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [960, 80.0]
+    rotation: 0
+    state: disabled
+- name: input_path
+  id: variable
+  parameters:
+    comment: Use the command-line dataset when supplied, otherwise the enabled file_path.
+    value: dataset or file_path
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [776, 188.0]
+    rotation: 0
+    state: enabled
+- name: kernel_dir
+  id: variable
+  parameters:
+    comment: Pipeline kernel built by the local Makefile.
+    value: str(__import__("pathlib").Path(globals().get("__file__", "base/test/until_sync_short_speedtest/wifi_rx.py")).resolve().parent
+      / "build")
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [960, 144.0]
+    rotation: 0
+    state: enabled
+- name: samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: 20e6
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [808, 16.0]
+    rotation: 0
+    state: enabled
+- name: sync_length
+  id: variable
+  parameters:
+    comment: ''
+    value: '320'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [40, 192.0]
+    rotation: 0
+    state: enabled
+- name: vector_size
+  id: variable
+  parameters:
+    comment: VECTOR_SIZE uses fixed 1024-sample AIE tiles.
+    value: '16384'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [296, 12.0]
+    rotation: 0
+    state: enabled
+- name: window_size
+  id: variable
+  parameters:
+    comment: ''
+    value: '48'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [176, 160.0]
+    rotation: 0
+    state: enabled
+- name: blocks_file_meta_sink_0
+  id: blocks_file_meta_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    detached: 'True'
+    extra_dict: pmt.make_dict()
+    file: tmp_data/tmp.cfdata
+    max_seg_size: '1000000'
+    rel_rate: '1'
+    samp_rate: samp_rate
+    type: complex
+    unbuffered: 'True'
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [824, 292.0]
+    rotation: 0
+    state: enabled
+- name: blocks_file_source_0
+  id: blocks_file_source
+  parameters:
+    affinity: ''
+    alias: ''
+    begin_tag: pmt.PMT_NIL
+    comment: ''
+    file: input_path+"-data"
+    length: '0'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    offset: '0'
+    repeat: 'False'
+    type: short
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1192, 148.0]
+    rotation: 0
+    state: enabled
+- name: blocks_interleaved_short_to_complex_0
+  id: blocks_interleaved_short_to_complex
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    scale_factor: '32768'
+    swap: 'False'
+    vector_input: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1480, 152.0]
+    rotation: 0
+    state: enabled
+- name: blocks_message_debug_0
+  id: blocks_message_debug
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    en_uvec: 'True'
+    log_level: info
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1600, 8.0]
+    rotation: 0
+    state: enabled
+- name: blocks_probe_rate_0
+  id: blocks_probe_rate
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha: '0.15'
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    mintime: '500.0'
+    name: ''
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1344, 16.0]
+    rotation: 0
+    state: enabled
+- name: dataset
+  id: parameter
+  parameters:
+    alias: ''
+    comment: Optional SigMF prefix override, without the -data or -meta suffix.
+    hide: none
+    label: Dataset
+    short_id: ''
+    type: str
+    value: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [576, 4.0]
+    rotation: 0
+    state: enabled
+- name: epy_block_0
+  id: epy_block
+  parameters:
+    VECTOR_SIZE: vector_size
+    _source_code: "#!/usr/bin/env python\n# -*- coding: utf-8 -*-\n#\n# Copyright\
+      \ 2026 gr-mlir_aie author.\n#\n# SPDX-License-Identifier: GPL-3.0-or-later\n\
+      #\n\nimport numpy as np\nfrom gnuradio import gr\nimport pmt\n\nfrom aie.dialects.aie\
+      \ import *\nfrom aie.extras.context import mlir_mod_ctx\nfrom aie.iron import\
+      \ Program, Runtime, Worker, ObjectFifo\nfrom aie.iron.placers import SequentialPlacer\n\
+      from aie.iron.controlflow import range_\n\nimport aie.iron as iron\nfrom aie.utils\
+      \ import NPUKernel, DefaultNPURuntime, get_current_device\n\nDEV = iron.get_current_device()\n\
+      DTYPE_IN=np.int32\nDTYPE_OUT=np.int32\n\nclass mlir_aie_python_int32(gr.basic_block):\n\
+      \    \"\"\"\n    docstring for block mlir_aie_python_int32\n    \"\"\"\n   \
+      \ def __init__(self, path_xclbin=\"kernel/build/final.xclbin\",path_insts_bin=\"\
+      kernel/build/insts.bin\", VECTOR_SIZE = 4096):\n        gr.basic_block.__init__(self,\n\
+      \            name=\"mlir_aie_python_int32\",\n            in_sig=[DTYPE_IN,\
+      \ ],\n            out_sig=[DTYPE_OUT, ])\n            \n        npu_kernel =\
+      \ NPUKernel(\n            path_xclbin,\n            path_insts_bin,\n      \
+      \      kernel_name=\"MLIR_AIE\",\n        )\n         \n        self.set_tag_propagation_policy(gr.TPP_DONT)\n\
+      \        self.kernel_handle = DefaultNPURuntime.load(npu_kernel)\n        self.out_buf\
+      \ = iron.zeros(VECTOR_SIZE, dtype=DTYPE_OUT)\n        self.MAX_TAGS_PER_TILE\
+      \ = 7\n        self.METADATA_WORDS_PER_TILE = 2 + 2 * self.MAX_TAGS_PER_TILE\n\
+      \        self.out_meta_buf = iron.zeros(4 * self.METADATA_WORDS_PER_TILE, dtype=np.int32)\n\
+      \        self.VECTOR_SIZE = VECTOR_SIZE\n        self.TILE_SIZE = VECTOR_SIZE\
+      \ // 4\n        self.tag_key = pmt.intern(\"wifi_start\")\n        self.tag_srcid\
+      \ = pmt.intern(\"sync_short\")\n\n    #TODO implement forecast()\n    def forecast(self,\
+      \ noutput_items, ninputs):\n        #ninput_items_required = [min(self.VECTOR_SIZE,\
+      \ noutput_items)] * ninputs\n        ninput_items_required = [noutput_items]\
+      \ * ninputs   \n        return ninput_items_required\n\n    def general_work(self,\
+      \ input_items, output_items):\n        in0 = input_items[0]\n        out0 =\
+      \ output_items[0]\n        \n        n_input_items = len(in0)\n        n_output_items\
+      \ = len(out0)\n        \n        n_chunks = min(n_input_items // self.VECTOR_SIZE,\
+      \ n_output_items // self.VECTOR_SIZE)\n\n        if n_chunks == 0:\n       \
+      \     return 0\n\n        total_produced = 0\n        for i in range(n_chunks):\n\
+      \            start_idx = i * self.VECTOR_SIZE\n            end_idx = start_idx\
+      \ + self.VECTOR_SIZE\n            \n            current_in_tensor = iron.tensor(in0[start_idx:end_idx],\
+      \ dtype=DTYPE_IN)\n            buffers = [current_in_tensor, self.out_buf, self.out_meta_buf]\n\
+      \            DefaultNPURuntime.run(self.kernel_handle, buffers)\n\n        \
+      \    out_np = self.out_buf.numpy()\n            out_meta = self.out_meta_buf.numpy().reshape(4,\
+      \ self.METADATA_WORDS_PER_TILE)\n            output_abs_start = self.nitems_written(0)\n\
+      \            for tile_idx, tile_meta in enumerate(out_meta):\n             \
+      \   tile_len = int(tile_meta[0])\n                tag_count = min(int(tile_meta[1]),\
+      \ self.MAX_TAGS_PER_TILE)\n                tile_start = tile_idx * self.TILE_SIZE\n\
+      \                tile_end = tile_start + tile_len\n                next_total_produced\
+      \ = total_produced + tile_len\n                out0[total_produced:next_total_produced]\
+      \ = out_np[tile_start:tile_end]\n\n                tile_abs_start = output_abs_start\
+      \ + total_produced\n                for tag_idx in range(tag_count):\n     \
+      \               tag_offset = int(tile_meta[2 + 2 * tag_idx])\n             \
+      \       tag_bits = np.uint32(int(tile_meta[3 + 2 * tag_idx]) & 0xffffffff)\n\
+      \                    tag_value = float(np.array([tag_bits], dtype=np.uint32).view(np.float32)[0])\n\
+      \                    if 0 <= tag_offset < tile_len:\n                      \
+      \  self.add_item_tag(\n                            0,\n                    \
+      \        tile_abs_start + tag_offset,\n                            self.tag_key,\n\
+      \                            pmt.from_double(tag_value),\n                 \
+      \           self.tag_srcid,\n                        )\n\n                total_produced\
+      \ = next_total_produced\n        \n        total_processed = n_chunks * self.VECTOR_SIZE\n\
+      \        self.consume_each(total_processed)\n        \n        return total_produced\n\
+      \n"
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    path_insts_bin: kernel_dir + "/insts.bin"
+    path_xclbin: kernel_dir + "/final.xclbin"
+  states:
+    _io_cache: ('mlir_aie_python_int32', 'mlir_aie_python_int32', [('path_xclbin',
+      "'kernel/build/final.xclbin'"), ('path_insts_bin', "'kernel/build/insts.bin'"),
+      ('VECTOR_SIZE', '4096')], [('0', 'int', 1)], [('0', 'int', 1)], '\n    docstring
+      for block mlir_aie_python_int32\n    ', ['VECTOR_SIZE'])
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [368, 264.0]
+    rotation: 0
+    state: disabled
+- name: mlir_aie_cint16_to_complex64_0
+  id: mlir_aie_cint16_to_complex64
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [584, 288.0]
+    rotation: 0
+    state: enabled
+- name: mlir_aie_complex64_to_cint16_0
+  id: mlir_aie_complex64_to_cint16
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    safe: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [160, 288.0]
+    rotation: 0
+    state: enabled
+- name: mlir_aie_mlir_aie_cpp_tagged_int32_to_int32_0
+  id: mlir_aie_mlir_aie_cpp_tagged_int32_to_int32
+  parameters:
+    N_TILES: vector_size // 1024
+    VECTOR_SIZE: vector_size
+    affinity: ''
+    alias: ''
+    comment: ''
+    kernel_name: MLIR_AIE
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_slots: '2'
+    path_insts_bin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/base/test/until_fft/kernel/build/insts.bin
+    path_xclbin: /home/piloteer/xdna_phy/gr-ieee802-11-aie/base/test/until_fft/kernel/build/final.xclbin
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [376, 124.0]
+    rotation: 0
+    state: enabled
+- name: mlir_aie_sigmf_tag_injector_0
+  id: mlir_aie_sigmf_tag_injector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    metadata_file: input_path+"-meta"
+    minoutbuf: '0'
+    start_sample: '0'
+    tag_key: rx_freq
+    type: complex
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1664, 152.0]
+    rotation: 0
+    state: enabled
+- name: virtual_sink_0
+  id: virtual_sink
+  parameters:
+    alias: ''
+    comment: ''
+    stream_id: iq
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1904, 160.0]
+    rotation: 0
+    state: enabled
+- name: virtual_source_0
+  id: virtual_source
+  parameters:
+    alias: ''
+    comment: ''
+    stream_id: iq
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [0, 280.0]
+    rotation: 0
+    state: enabled
+- name: virtual_source_0_0
+  id: virtual_source
+  parameters:
+    alias: ''
+    comment: ''
+    stream_id: iq
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1168, 32.0]
+    rotation: 0
+    state: enabled
+
+connections:
+- [blocks_file_source_0, '0', blocks_interleaved_short_to_complex_0, '0']
+- [blocks_interleaved_short_to_complex_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
+- [blocks_probe_rate_0, rate, blocks_message_debug_0, print]
+- [epy_block_0, '0', mlir_aie_cint16_to_complex64_0, '0']
+- [mlir_aie_cint16_to_complex64_0, '0', blocks_file_meta_sink_0, '0']
+- [mlir_aie_complex64_to_cint16_0, '0', epy_block_0, '0']
+- [mlir_aie_complex64_to_cint16_0, '0', mlir_aie_mlir_aie_cpp_tagged_int32_to_int32_0,
+  '0']
+- [mlir_aie_mlir_aie_cpp_tagged_int32_to_int32_0, '0', mlir_aie_cint16_to_complex64_0,
+  '0']
+- [mlir_aie_sigmf_tag_injector_0, '0', virtual_sink_0, '0']
+- [virtual_source_0, '0', mlir_aie_complex64_to_cint16_0, '0']
+- [virtual_source_0_0, '0', blocks_probe_rate_0, '0']
+
+metadata:
+  file_format: 1
+  grc_version: 3.10.9.2

@@ -42,67 +42,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [8, 80.0]
-    rotation: 0
-    state: enabled
-- name: chan_est
-  id: variable
-  parameters:
-    comment: ''
-    value: '0'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [248, 8.0]
-    rotation: 0
-    state: enabled
-- name: freq
-  id: variable
-  parameters:
-    comment: ''
-    value: 2.417e9
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [160, 8.0]
-    rotation: 0
-    state: enabled
-- name: samp_rate
-  id: variable
-  parameters:
-    comment: ''
-    value: 20e6
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [328, 8.0]
-    rotation: 0
-    state: enabled
-- name: sync_length
-  id: variable
-  parameters:
-    comment: ''
-    value: '320'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [8, 148.0]
-    rotation: 0
-    state: enabled
-- name: window_size
-  id: variable
-  parameters:
-    comment: ''
-    value: '48'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [8, 80.0]
+    coordinate: [200, 20.0]
     rotation: 0
     state: enabled
 - name: blocks_file_meta_source_0
@@ -207,41 +147,44 @@ blocks:
       \ = np.int32\n\n\nclass mlir_aie_python_int32(gr.basic_block):\n    \"\"\"\n\
       \    GNU Radio wrapper for the standalone sync_long_cf test kernel.\n    \"\"\
       \"\n\n    def __init__(self, path_xclbin=\"build/final.xclbin\", path_insts_bin=\"\
-       build/insts.bin\", VECTOR_SIZE=16384):\n        gr.basic_block.__init__(\n  \
-      \          self,\n            name=\"mlir_aie_python_int32\",\n            in_sig=[DTYPE_IN],\n\
-      \            out_sig=[DTYPE_OUT],\n        )\n\n        npu_kernel = NPUKernel(path_xclbin,\
-      \ path_insts_bin, kernel_name=\"MLIR_AIE\")\n        self.set_tag_propagation_policy(gr.TPP_DONT)\n\
-      \        self.kernel_handle = DefaultNPURuntime.load(npu_kernel)\n\n       \
-      \ self.MAX_TAGS_PER_TILE = 7\n        self.METADATA_WORDS_PER_TILE = 2 + 2 *\
-      \ self.MAX_TAGS_PER_TILE\n        self.VECTOR_SIZE = VECTOR_SIZE\n        self.TILE_SIZE\
-       \ = 1024\n        self.N_TILES = VECTOR_SIZE // 1024\n        self.DELAY_SAMPLES = 320\n        self.IN_TILE_SIZE\
-      \ = self.TILE_SIZE + self.DELAY_SAMPLES\n        self.IN_VECTOR_SIZE = self.IN_TILE_SIZE\
-       \ * self.N_TILES\n\n        self.out_buf = iron.zeros(self.VECTOR_SIZE, dtype=DTYPE_OUT)\n\
-       \        self.out_meta_buf = iron.zeros(self.N_TILES * self.METADATA_WORDS_PER_TILE, dtype=np.int32)\n\
-      \        self.delay_history = np.zeros(self.DELAY_SAMPLES, dtype=DTYPE_IN)\n\
-      \n        self.set_output_multiple(self.VECTOR_SIZE)\n\n        self.tag_key\
-      \ = pmt.intern(\"wifi_start\")\n        self.tag_srcid = pmt.intern(\"sync_short\"\
-      )\n\n    def forecast(self, noutput_items, ninputs):\n        return [max(self.VECTOR_SIZE,\
-      \ noutput_items)]\n\n    def general_work(self, input_items, output_items):\n\
-      \        in0 = input_items[0]\n        out0 = output_items[0]\n\n        n_chunks\
-      \ = min(len(in0) // self.VECTOR_SIZE, len(out0) // self.VECTOR_SIZE)\n     \
-      \   if n_chunks == 0:\n            return 0\n\n        total_produced = 0\n\
-      \        abs_read_start = self.nitems_read(0)\n        output_abs_start = self.nitems_written(0)\n\
-      \n        for chunk_idx in range(n_chunks):\n            chunk_start = chunk_idx\
-      \ * self.VECTOR_SIZE\n            chunk_abs_start = abs_read_start + chunk_start\n\
-      \            in_np = np.zeros(self.IN_VECTOR_SIZE, dtype=DTYPE_IN)\n       \
-       \     in_meta_np = np.zeros((self.N_TILES, self.METADATA_WORDS_PER_TILE), dtype=np.int32)\n\
-       \n            for tile_idx in range(self.N_TILES):\n                src_start = chunk_start\
-      \ + tile_idx * self.TILE_SIZE\n                src_end = src_start + self.TILE_SIZE\n\
-      \                dst_start = tile_idx * self.IN_TILE_SIZE + self.DELAY_SAMPLES\n\
-      \                dst_end = dst_start + self.TILE_SIZE\n                in_np[dst_start\
-      \ - self.DELAY_SAMPLES:dst_start] = self.delay_history\n                in_np[dst_start:dst_end]\
-      \ = in0[src_start:src_end]\n                self.delay_history[:] = in0[src_end\
-      \ - self.DELAY_SAMPLES:src_end]\n\n                tile_abs_start = chunk_abs_start\
-      \ + tile_idx * self.TILE_SIZE\n                tile_abs_end = tile_abs_start\
-      \ + self.TILE_SIZE\n                tags = self.get_tags_in_range(0, tile_abs_start,\
-      \ tile_abs_end, self.tag_key)\n                tag_count = min(len(tags), self.MAX_TAGS_PER_TILE)\n\
-      \                in_meta_np[tile_idx, 0] = self.TILE_SIZE\n                in_meta_np[tile_idx,\
+      build/insts.bin\", VECTOR_SIZE=16384):\n        gr.basic_block.__init__(\n \
+      \           self,\n            name=\"mlir_aie_python_int32\",\n           \
+      \ in_sig=[DTYPE_IN],\n            out_sig=[DTYPE_OUT],\n        )\n\n      \
+      \  npu_kernel = NPUKernel(path_xclbin, path_insts_bin, kernel_name=\"MLIR_AIE\"\
+      )\n        self.set_tag_propagation_policy(gr.TPP_DONT)\n        self.kernel_handle\
+      \ = DefaultNPURuntime.load(npu_kernel)\n\n        self.MAX_TAGS_PER_TILE = 7\n\
+      \        self.METADATA_WORDS_PER_TILE = 2 + 2 * self.MAX_TAGS_PER_TILE\n   \
+      \     self.VECTOR_SIZE = VECTOR_SIZE\n        self.TILE_SIZE = 1024\n      \
+      \  self.N_TILES = VECTOR_SIZE // 1024\n        self.DELAY_SAMPLES = 320\n  \
+      \      self.IN_TILE_SIZE = self.TILE_SIZE + self.DELAY_SAMPLES\n        self.IN_VECTOR_SIZE\
+      \ = self.IN_TILE_SIZE * self.N_TILES\n\n        self.out_buf = iron.zeros(self.VECTOR_SIZE,\
+      \ dtype=DTYPE_OUT)\n        self.out_meta_buf = iron.zeros(self.N_TILES * self.METADATA_WORDS_PER_TILE,\
+      \ dtype=np.int32)\n        self.delay_history = np.zeros(self.DELAY_SAMPLES,\
+      \ dtype=DTYPE_IN)\n\n        self.set_output_multiple(self.VECTOR_SIZE)\n\n\
+      \        self.tag_key = pmt.intern(\"wifi_start\")\n        self.tag_srcid =\
+      \ pmt.intern(\"sync_short\")\n\n    def forecast(self, noutput_items, ninputs):\n\
+      \        return [max(self.VECTOR_SIZE, noutput_items)]\n\n    def general_work(self,\
+      \ input_items, output_items):\n        in0 = input_items[0]\n        out0 =\
+      \ output_items[0]\n\n        n_chunks = min(len(in0) // self.VECTOR_SIZE, len(out0)\
+      \ // self.VECTOR_SIZE)\n        if n_chunks == 0:\n            return 0\n\n\
+      \        total_produced = 0\n        abs_read_start = self.nitems_read(0)\n\
+      \        output_abs_start = self.nitems_written(0)\n\n        for chunk_idx\
+      \ in range(n_chunks):\n            chunk_start = chunk_idx * self.VECTOR_SIZE\n\
+      \            chunk_abs_start = abs_read_start + chunk_start\n            in_np\
+      \ = np.zeros(self.IN_VECTOR_SIZE, dtype=DTYPE_IN)\n            in_meta_np =\
+      \ np.zeros((self.N_TILES, self.METADATA_WORDS_PER_TILE), dtype=np.int32)\n\n\
+      \            for tile_idx in range(self.N_TILES):\n                src_start\
+      \ = chunk_start + tile_idx * self.TILE_SIZE\n                src_end = src_start\
+      \ + self.TILE_SIZE\n                dst_start = tile_idx * self.IN_TILE_SIZE\
+      \ + self.DELAY_SAMPLES\n                dst_end = dst_start + self.TILE_SIZE\n\
+      \                in_np[dst_start - self.DELAY_SAMPLES:dst_start] = self.delay_history\n\
+      \                in_np[dst_start:dst_end] = in0[src_start:src_end]\n       \
+      \         self.delay_history[:] = in0[src_end - self.DELAY_SAMPLES:src_end]\n\
+      \n                tile_abs_start = chunk_abs_start + tile_idx * self.TILE_SIZE\n\
+      \                tile_abs_end = tile_abs_start + self.TILE_SIZE\n          \
+      \      tags = self.get_tags_in_range(0, tile_abs_start, tile_abs_end, self.tag_key)\n\
+      \                tag_count = min(len(tags), self.MAX_TAGS_PER_TILE)\n      \
+      \          in_meta_np[tile_idx, 0] = self.TILE_SIZE\n                in_meta_np[tile_idx,\
       \ 1] = tag_count\n                for tag_idx, tag in enumerate(tags[:tag_count]):\n\
       \                    tag_offset = int(tag.offset - tile_abs_start)\n       \
       \             tag_value = pmt.to_double(tag.value)\n                    tag_value_q29\
@@ -252,7 +195,7 @@ blocks:
       \      current_in_meta_tensor = iron.tensor(in_meta_np.reshape(-1), dtype=np.int32)\n\
       \            DefaultNPURuntime.run(self.kernel_handle, [current_in_tensor, current_in_meta_tensor,\
       \ self.out_buf, self.out_meta_buf])\n\n            out_np = self.out_buf.numpy()\n\
-       \            out_meta = self.out_meta_buf.numpy().reshape(self.N_TILES, self.METADATA_WORDS_PER_TILE)\n\
+      \            out_meta = self.out_meta_buf.numpy().reshape(self.N_TILES, self.METADATA_WORDS_PER_TILE)\n\
       \            for tile_idx, tile_meta in enumerate(out_meta):\n             \
       \   tile_len = max(0, min(int(tile_meta[0]), self.TILE_SIZE))\n            \
       \    tag_count = max(0, min(int(tile_meta[1]), self.MAX_TAGS_PER_TILE))\n  \
@@ -277,7 +220,7 @@ blocks:
   states:
     _io_cache: ('mlir_aie_python_int32', 'mlir_aie_python_int32', [('path_xclbin',
       "'build/final.xclbin'"), ('path_insts_bin', "'build/insts.bin'"), ('VECTOR_SIZE',
-       '16384')], [('0', 'int', 1)], [('0', 'int', 1)], '\n    GNU Radio wrapper for
+      '16384')], [('0', 'int', 1)], [('0', 'int', 1)], '\n    GNU Radio wrapper for
       the standalone sync_long_cf test kernel.\n    ', ['VECTOR_SIZE'])
     bus_sink: false
     bus_source: false
