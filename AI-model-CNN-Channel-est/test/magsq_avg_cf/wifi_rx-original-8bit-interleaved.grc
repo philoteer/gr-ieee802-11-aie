@@ -18,7 +18,8 @@ options:
     qt_qss_theme: ''
     realtime_scheduling: ''
     run: 'True'
-    run_command: '{python} -u {filename}'
+    run_command: bash -c 'export LD_LIBRARY_PATH="$(dirname "$2")/../../../../gr-foo-fixed/build/lib${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}";
+      exec "$1" -u "$2"' -- {python} {filename}
     run_options: prompt
     sizing_mode: fixed
     thread_safe_setters: ''
@@ -33,6 +34,60 @@ options:
     state: enabled
 
 blocks:
+- name: data_dir
+  id: variable
+  parameters:
+    comment: Dataset paths are relative to the generated script in AI-model-CNN-Channel-est/test/magsq_avg_cf.
+    value: str(__import__("pathlib").Path(globals().get("__file__", "AI-model-CNN-Channel-est/test/magsq_avg_cf/wifi_rx.py")).resolve().parents[2] / "data")
+  states:
+    coordinate: [960, 16.0]
+    rotation: 0
+    state: enabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/stress_test.sigmf"
+  states:
+    coordinate: [960, 208.0]
+    rotation: 0
+    state: disabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/room_20260927.sigmf"
+  states:
+    coordinate: [1200, 208.0]
+    rotation: 0
+    state: disabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/206.sigmf"
+  states:
+    coordinate: [1200, 80.0]
+    rotation: 0
+    state: disabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/stress_test_awgn_15db.sigmf"
+  states:
+    coordinate: [960, 80.0]
+    rotation: 0
+    state: enabled
+- name: kernel_dir
+  id: variable
+  parameters:
+    comment: Standalone magnitude-squared averaging kernel built by the local Makefile.
+    value: str(__import__("pathlib").Path(globals().get("__file__", "AI-model-CNN-Channel-est/test/magsq_avg_cf/wifi_rx.py")).resolve().parent / "build")
+  states:
+    coordinate: [960, 144.0]
+    rotation: 0
+    state: enabled
 - name: chan_est
   id: variable_qtgui_chooser
   parameters:
@@ -333,9 +388,9 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    append: 'True'
+    append: 'False'
     comment: ''
-    file: ../../data/tmp_out/foo.pcap
+    file: data_dir + "/tmp_out/magsq_avg_original.pcap"
     type: byte
     unbuffered: 'True'
     vlen: '1'
@@ -353,13 +408,13 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: ../../data/raw_capture/wifi_iq_hackrf.bin
+    file: file_path+"-data"
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
     offset: '0'
-    repeat: 'True'
-    type: byte
+    repeat: 'False'
+    type: short
     vlen: '1'
   states:
     bus_sink: false
@@ -368,15 +423,16 @@ blocks:
     coordinate: [1240, 128.0]
     rotation: 0
     state: enabled
-- name: blocks_interleaved_char_to_complex_0
-  id: blocks_interleaved_char_to_complex
+- name: blocks_interleaved_short_to_complex_0
+  id: blocks_interleaved_short_to_complex
   parameters:
     affinity: ''
     alias: ''
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
-    scale_factor: '127.0'
+    scale_factor: '32768'
+    swap: 'False'
     vector_input: 'False'
   states:
     bus_sink: false
@@ -669,8 +725,8 @@ blocks:
     maxoutbuf: '0'
     minoutbuf: '0'
     num_slots: '2'
-    path_insts_bin: build/insts.bin
-    path_xclbin: build/final.xclbin
+    path_insts_bin: kernel_dir + "/insts.bin"
+    path_xclbin: kernel_dir + "/final.xclbin"
   states:
     bus_sink: false
     bus_source: false
@@ -1338,6 +1394,25 @@ blocks:
     coordinate: [1000, 312.0]
     rotation: 0
     state: enabled
+- name: mlir_aie_sigmf_tag_injector_0
+  id: mlir_aie_sigmf_tag_injector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    metadata_file: file_path+"-meta"
+    minoutbuf: '0'
+    start_sample: '0'
+    tag_key: rx_freq
+    type: complex
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1664, 152.0]
+    rotation: 0
+    state: enabled
 - name: virtual_sink_0
   id: virtual_sink
   parameters:
@@ -1348,7 +1423,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1664, 160.0]
+    coordinate: [1904, 160.0]
     rotation: 0
     state: enabled
 - name: virtual_source_0
@@ -1387,8 +1462,9 @@ connections:
 - [blocks_delay_0_0, '0', ieee802_11_sync_short_0, '0']
 - [blocks_divide_xx_0, '0', ieee802_11_sync_short_0, '2']
 - [blocks_divide_xx_0, '0', qtgui_time_sink_x_0, '0']
-- [blocks_file_source_0, '0', blocks_interleaved_char_to_complex_0, '0']
-- [blocks_interleaved_char_to_complex_0, '0', virtual_sink_0, '0']
+- [blocks_file_source_0, '0', blocks_interleaved_short_to_complex_0, '0']
+- [blocks_interleaved_short_to_complex_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
+- [mlir_aie_sigmf_tag_injector_0, '0', virtual_sink_0, '0']
 - [blocks_moving_average_xx_0, '0', blocks_divide_xx_0, '1']
 - [blocks_moving_average_xx_0, '0', qtgui_time_sink_x_1, '1']
 - [blocks_moving_average_xx_1, '0', blocks_complex_to_mag_0, '0']

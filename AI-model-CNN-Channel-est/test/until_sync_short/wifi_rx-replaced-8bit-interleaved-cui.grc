@@ -18,7 +18,8 @@ options:
     qt_qss_theme: ''
     realtime_scheduling: ''
     run: 'True'
-    run_command: '{python} -u {filename}'
+    run_command: bash -c 'export LD_LIBRARY_PATH="$(dirname "$2")/../../../../gr-foo-fixed/build/lib${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}";
+      exec "$1" -u "$2"' -- {python} {filename}
     run_options: run
     sizing_mode: fixed
     thread_safe_setters: ''
@@ -33,6 +34,60 @@ options:
     state: enabled
 
 blocks:
+- name: data_dir
+  id: variable
+  parameters:
+    comment: Dataset paths are relative to the generated script in AI-model-CNN-Channel-est/test/until_sync_short.
+    value: str(__import__("pathlib").Path(globals().get("__file__", "AI-model-CNN-Channel-est/test/until_sync_short/wifi_rx.py")).resolve().parents[2] / "data")
+  states:
+    coordinate: [960, 16.0]
+    rotation: 0
+    state: enabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/stress_test.sigmf"
+  states:
+    coordinate: [960, 208.0]
+    rotation: 0
+    state: disabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/room_20260927.sigmf"
+  states:
+    coordinate: [1200, 208.0]
+    rotation: 0
+    state: disabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/206.sigmf"
+  states:
+    coordinate: [1200, 80.0]
+    rotation: 0
+    state: disabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/stress_test_awgn_15db.sigmf"
+  states:
+    coordinate: [960, 80.0]
+    rotation: 0
+    state: enabled
+- name: kernel_dir
+  id: variable
+  parameters:
+    comment: Pipeline kernel built by the local Makefile.
+    value: str(__import__("pathlib").Path(globals().get("__file__", "AI-model-CNN-Channel-est/test/until_sync_short/wifi_rx.py")).resolve().parent / "build")
+  states:
+    coordinate: [960, 144.0]
+    rotation: 0
+    state: enabled
 - name: chan_est
   id: variable
   parameters:
@@ -121,7 +176,7 @@ blocks:
     comment: ''
     detached: 'True'
     extra_dict: pmt.make_dict()
-    file: ../../data/tmp_out/stage16_sync_long.c64_metasink
+    file: data_dir + "/tmp_out/until_sync_short_replaced.iqdata"
     max_seg_size: '1000000'
     rel_rate: '1'
     samp_rate: samp_rate
@@ -142,7 +197,7 @@ blocks:
     alias: ''
     append: 'False'
     comment: ''
-    file: ../../data/tmp_out/out.pcap
+    file: data_dir + "/tmp_out/until_sync_short_replaced.pcap"
     type: byte
     unbuffered: 'True'
     vlen: '1'
@@ -160,13 +215,13 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: "../../data/raw_capture/wifi_iq_hackrf.bin"
+    file: file_path+"-data"
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
     offset: '0'
     repeat: 'False'
-    type: byte
+    type: short
     vlen: '1'
   states:
     bus_sink: false
@@ -175,15 +230,16 @@ blocks:
     coordinate: [1240, 128.0]
     rotation: 0
     state: enabled
-- name: blocks_interleaved_char_to_complex_0
-  id: blocks_interleaved_char_to_complex
+- name: blocks_interleaved_short_to_complex_0
+  id: blocks_interleaved_short_to_complex
   parameters:
     affinity: ''
     alias: ''
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
-    scale_factor: '127.0'
+    scale_factor: '32768'
+    swap: 'False'
     vector_input: 'False'
   states:
     bus_sink: false
@@ -261,10 +317,8 @@ blocks:
       \ def __init__(self, path_xclbin=\"build/final.xclbin\",path_insts_bin=\"build/insts.bin\"\
       , VECTOR_SIZE = 4096):\n        gr.basic_block.__init__(self,\n            name=\"\
       mlir_aie_python_int32\",\n            in_sig=[DTYPE_IN, ],\n            out_sig=[DTYPE_OUT,\
-      \ ])\n            \n        npu_kernel = NPUKernel(\n            path_xclbin,\n\
-      \            path_insts_bin,\n            kernel_name=\"MLIR_AIE\",\n      \
-      \  )\n        \n        self.set_tag_propagation_policy(gr.TPP_DONT)\n     \
-      \   \n        self.kernel_handle = DefaultNPURuntime.load(npu_kernel)\n    \
+      \ ])\n            \n        self.kernel_paths = (path_xclbin, path_insts_bin)\n\
+      \        self.set_tag_propagation_policy(gr.TPP_DONT)\n    \
       \    self.OUT_SAMPLE_OFFSET = 320\n        self.VECTOR_SIZE = VECTOR_SIZE\n\
       \        self.TILE_SIZE = VECTOR_SIZE // 4\n        self.OUT_TILE_SIZE = self.TILE_SIZE\
       \ + self.OUT_SAMPLE_OFFSET\n        self.OUT_VECTOR_SIZE = self.OUT_TILE_SIZE\
@@ -274,7 +328,7 @@ blocks:
       \ self.METADATA_WORDS_PER_TILE, dtype=np.int32)\n        self.tag_key = pmt.intern(\"\
       wifi_start\")\n        self.tag_srcid = pmt.intern(\"sync_short\")\n       \
       \ \n        self.set_output_multiple(4096)\n        self.set_min_output_buffer(4096)\n\
-      \n    #TODO implement forecast()\n    def forecast(self, noutput_items, ninputs):\n\
+      \n    def start(self):\n        npu_kernel = NPUKernel(*self.kernel_paths, kernel_name=\"MLIR_AIE\")\n        self.kernel_handle = DefaultNPURuntime.load(npu_kernel)\n        return True\n\n    #TODO implement forecast()\n    def forecast(self, noutput_items, ninputs):\n\
       \        #ninput_items_required = [min(self.VECTOR_SIZE, noutput_items)] * ninputs\n\
       \        ninput_items_required = [noutput_items] * ninputs   \n        return\
       \ ninput_items_required\n\n    def general_work(self, input_items, output_items):\n\
@@ -312,8 +366,8 @@ blocks:
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
-    path_insts_bin: '"build/insts.bin"'
-    path_xclbin: '"build/final.xclbin"'
+    path_insts_bin: kernel_dir + "/insts.bin"
+    path_xclbin: kernel_dir + "/final.xclbin"
   states:
     _io_cache: ('mlir_aie_python_int32', 'mlir_aie_python_int32', [('path_xclbin',
       "'build/final.xclbin'"), ('path_insts_bin', "'build/insts.bin'"), ('VECTOR_SIZE',
@@ -468,6 +522,7 @@ blocks:
 - name: mlir_aie_mlir_aie_cpp_tagged_int32_to_int32_0
   id: mlir_aie_mlir_aie_cpp_tagged_int32_to_int32
   parameters:
+    N_TILES: '4'
     VECTOR_SIZE: '4096'
     affinity: ''
     alias: ''
@@ -475,8 +530,9 @@ blocks:
     kernel_name: MLIR_AIE
     maxoutbuf: '0'
     minoutbuf: '0'
-    path_insts_bin: '"kernel/build/insts.bin"'
-    path_xclbin: '"kernel/build/final.xclbin"'
+    num_slots: '2'
+    path_insts_bin: kernel_dir + "/insts.bin"
+    path_xclbin: kernel_dir + "/final.xclbin"
   states:
     bus_sink: false
     bus_source: false
@@ -484,6 +540,25 @@ blocks:
     coordinate: [416, 152.0]
     rotation: 0
     state: disabled
+- name: mlir_aie_sigmf_tag_injector_0
+  id: mlir_aie_sigmf_tag_injector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    metadata_file: file_path+"-meta"
+    minoutbuf: '0'
+    start_sample: '0'
+    tag_key: rx_freq
+    type: complex
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1664, 152.0]
+    rotation: 0
+    state: enabled
 - name: virtual_sink_0
   id: virtual_sink
   parameters:
@@ -494,7 +569,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1664, 160.0]
+    coordinate: [1904, 160.0]
     rotation: 0
     state: enabled
 - name: virtual_source_0
@@ -526,8 +601,9 @@ blocks:
 
 connections:
 - [blocks_delay_0, '0', ieee802_11_sync_long_0, '1']
-- [blocks_file_source_0, '0', blocks_interleaved_char_to_complex_0, '0']
-- [blocks_interleaved_char_to_complex_0, '0', virtual_sink_0, '0']
+- [blocks_file_source_0, '0', blocks_interleaved_short_to_complex_0, '0']
+- [blocks_interleaved_short_to_complex_0, '0', mlir_aie_sigmf_tag_injector_0, '0']
+- [mlir_aie_sigmf_tag_injector_0, '0', virtual_sink_0, '0']
 - [blocks_probe_rate_0, rate, blocks_message_debug_0, print]
 - [blocks_stream_to_vector_0, '0', fft_vxx_0, '0']
 - [epy_block_0, '0', mlir_aie_cint16_to_complex64_0, '0']
