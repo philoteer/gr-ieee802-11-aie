@@ -50,7 +50,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: data_dir + "/raw_capture/stress_test.sigmf"
+    value: data_dir + "/raw_capture/stress_test_awgn_15db.sigmf"
   states:
     bus_sink: false
     bus_source: false
