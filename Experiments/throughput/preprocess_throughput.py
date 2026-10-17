@@ -31,13 +31,17 @@ def dataset_name(stem):
 
     Args:
         stem (str): Filename without its extension. Supported aliases include
-            desktop_/cu_ prefixes, trailing _YYYYMMDD dates, and stresstest.
+            desktop_/cu_ prefixes, trailing _YYYYMMDD dates, stresstest, and
+            stress_test_<SNR>dB names for AWGN capture variants.
 
     Returns:
         str: Canonical dataset name used to match logs with capture metadata.
     """
     name = re.sub(r"^(?:desktop_|cu_)", "", stem)
     name = re.sub(r"_\d{8}$", "", name)
+    # Logs omit the AWGN tag and use mixed-case dB; metadata includes the tag.
+    name = re.sub(r"^stress_test_(?:awgn_)?(\d+(?:\.\d+)?)db$",
+                  r"stress_test_awgn_\1db", name, flags=re.IGNORECASE)
     return "stress_test" if name == "stresstest" else name
 
 
