@@ -36,13 +36,37 @@ blocks:
 - name: chan_est
   id: variable
   parameters:
-    comment: ''
+    comment: LS
     value: '0'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate: [184, 12.0]
+    rotation: 0
+    state: disabled
+- name: chan_est
+  id: variable
+  parameters:
+    comment: CNN_CHANNEL
+    value: '7'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [184, 108.0]
+    rotation: 0
+    state: disabled
+- name: chan_est
+  id: variable
+  parameters:
+    comment: MLP_CHANNEL
+    value: '9'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [288, 108.0]
     rotation: 0
     state: enabled
 - name: data_dir
@@ -92,6 +116,18 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [776, 20.0]
+    rotation: 0
+    state: disabled
+- name: file_path
+  id: variable
+  parameters:
+    comment: ''
+    value: data_dir + "/raw_capture/stress_test_awgn_15db.sigmf"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [944, 20.0]
     rotation: 0
     state: disabled
 - name: freq
@@ -670,7 +706,7 @@ blocks:
     minoutbuf: '0'
   states:
     _io_cache: ('IQ Tag Frequency Retuner', 'blk', [('frequency_callback', '<function
-      blk.<lambda> at 0x70e31af4e480>')], [('0', 'complex', 1)], [], '', ['frequency_callback'])
+      blk.<lambda> at 0x7aa753e57060>')], [('0', 'complex', 1)], [], '', ['frequency_callback'])
     bus_sink: false
     bus_source: false
     bus_structure: null
