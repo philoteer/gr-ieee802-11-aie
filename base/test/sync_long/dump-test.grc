@@ -19,7 +19,7 @@ options:
     realtime_scheduling: ''
     run: 'True'
     run_command: '{python} -u {filename}'
-    run_options: prompt
+    run_options: run
     sizing_mode: fixed
     thread_safe_setters: ''
     title: ''
@@ -141,7 +141,7 @@ blocks:
     alias: ''
     append: 'False'
     comment: ''
-    file: out.pcap
+    file: tmp_data/out.pcap
     type: byte
     unbuffered: 'True'
     vlen: '1'
@@ -151,6 +151,41 @@ blocks:
     bus_structure: null
     coordinate: [896, 516.0]
     rotation: 180
+    state: enabled
+- name: blocks_message_debug_0
+  id: blocks_message_debug
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    en_uvec: 'True'
+    log_level: info
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [528, 328.0]
+    rotation: 0
+    state: enabled
+- name: blocks_probe_rate_0
+  id: blocks_probe_rate
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha: '0.15'
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    mintime: '500.0'
+    name: ''
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [208, 320.0]
+    rotation: 0
     state: enabled
 - name: blocks_stream_to_vector_0
   id: blocks_stream_to_vector
@@ -302,7 +337,9 @@ blocks:
 
 connections:
 - [blocks_delay_0, '0', ieee802_11_sync_long_0, '1']
+- [blocks_file_meta_source_0, '0', blocks_probe_rate_0, '0']
 - [blocks_file_meta_source_0, '0', blocks_tag_gate_0, '0']
+- [blocks_probe_rate_0, rate, blocks_message_debug_0, log]
 - [blocks_stream_to_vector_0, '0', fft_vxx_0, '0']
 - [blocks_tag_gate_0, '0', blocks_delay_0, '0']
 - [blocks_tag_gate_0, '0', ieee802_11_sync_long_0, '0']
