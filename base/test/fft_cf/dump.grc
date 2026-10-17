@@ -404,7 +404,7 @@ blocks:
     log: 'False'
     maxoutbuf: '0'
     minoutbuf: '0'
-    sync_length: '240'
+    sync_length: '320'
   states:
     bus_sink: false
     bus_source: false

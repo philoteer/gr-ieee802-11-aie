@@ -100,8 +100,8 @@ blocks:
     alias: ''
     comment: ''
     detached: 'True'
-    file: tmp_data/tmp.iqdata
-    hdr_file: tmp_data/tmp.iqdata.hdr
+    file: /home/piloteer/xdna_phy/gr-ieee802-11-aie/base/test/fft_cf/tmp_data/out.iqdata
+    hdr_file: /home/piloteer/xdna_phy/gr-ieee802-11-aie/base/test/fft_cf/tmp_data/out.iqdata.hdr
     maxoutbuf: '0'
     minoutbuf: '0'
     repeat: 'False'
@@ -183,6 +183,25 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [736, 112.0]
+    rotation: 0
+    state: enabled
+- name: blocks_tag_gate_0
+  id: blocks_tag_gate
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    propagate_tags: 'True'
+    single_key: '"wifi_start"'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [408, 52.0]
     rotation: 0
     state: enabled
 - name: fft_vxx_0
@@ -279,10 +298,11 @@ blocks:
     state: enabled
 
 connections:
-- [blocks_file_meta_source_0, '0', blocks_probe_rate_0, '0']
-- [blocks_file_meta_source_0, '0', blocks_stream_to_vector_0, '0']
+- [blocks_file_meta_source_0, '0', blocks_tag_gate_0, '0']
 - [blocks_probe_rate_0, rate, blocks_message_debug_0, log]
 - [blocks_stream_to_vector_0, '0', fft_vxx_0, '0']
+- [blocks_tag_gate_0, '0', blocks_probe_rate_0, '0']
+- [blocks_tag_gate_0, '0', blocks_stream_to_vector_0, '0']
 - [fft_vxx_0, '0', ieee802_11_frame_equalizer_0, '0']
 - [foo_wireshark_connector_0, '0', blocks_file_sink_0, '0']
 - [ieee802_11_decode_mac_0, out, foo_wireshark_connector_0, in]
